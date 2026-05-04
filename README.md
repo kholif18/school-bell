@@ -90,15 +90,15 @@ logs/        # System logs
 
 ## 📸 Screenshots
 
-<h3>🌐 Web Dashboard</h3>
-<p align="center">
-  <img src="assets/images/web-dashboard.png" width="900">
-</p>
+### 🌐 Web Dashboard
 
-<h3>🖥 Desktop Monitor</h3>
-<p align="center">
-  <img src="assets/images/desktop-monitor.png" width="700">
-</p>
+![Web Dashboard](./assets/images/web-dashboard.png)
+
+---
+
+### 🖥 Desktop Monitor
+
+![Desktop Monitor](./assets/images/desktop-monitor.png)
 
 ---
 
