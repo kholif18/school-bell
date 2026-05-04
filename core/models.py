@@ -1,4 +1,4 @@
-# core/models.py (FINAL with Profile)
+# core/models.py
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Time, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func

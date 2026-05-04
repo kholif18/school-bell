@@ -1,13 +1,16 @@
-# core/config_manager.py (fix path issue)
+# core/config_manager.py
 import json
 import os
+import threading
+
 from typing import Any, Optional
+from core.path_helper import CONFIG_PATH
 
 class ConfigManager:
     """Manage application configuration"""
     
-    def __init__(self, config_path: str = "config.json"):
-        self.config_path = config_path
+    def __init__(self, config_path: str = None):
+        self.config_path = config_path or CONFIG_PATH
         self.config = self._load_defaults()
         self._load()
     
@@ -100,9 +103,11 @@ class ConfigManager:
 
 # Singleton
 _config_manager = None
+_config_lock = threading.Lock()
 
 def get_config() -> ConfigManager:
     global _config_manager
-    if _config_manager is None:
-        _config_manager = ConfigManager()
+    with _config_lock:
+        if _config_manager is None:
+            _config_manager = ConfigManager()
     return _config_manager

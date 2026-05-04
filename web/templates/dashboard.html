@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>School Bell Automation System</title>
+    <title>School Bell Control Center</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
@@ -12,374 +12,1073 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0D1117;
+            color: #E6EDF3;
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        
+
+        /* Header */
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-        
-        .status-bar {
-            background: #f0f0f0;
-            padding: 15px 30px;
+            background: linear-gradient(135deg, #0D1117 0%, #161B22 100%);
+            border-bottom: 2px solid #238636;
+            padding: 15px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #ddd;
+            flex-wrap: wrap;
+            gap: 15px;
         }
-        
-        .status-indicator {
+
+        .header h1 {
+            font-size: 1.4em;
+            color: #39FF14;
+        }
+
+        .header h1 span {
+            color: #E6EDF3;
+            font-size: 0.7em;
+        }
+
+        .status-badge {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .running-badge {
+            background: #238636;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .stopped-badge {
+            background: #DA3633;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        .toggle-btn {
+            background: #1F6FEB;
+            border: none;
+            padding: 8px 25px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .toggle-btn:hover {
+            background: #388BF0;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            margin: 0 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* Volume control */
+        .volume-control {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        
-        .status-led {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #4CAF50;
-            animation: pulse 2s infinite;
+
+        .volume-control input {
+            width: 100px;
         }
-        
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.2); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        
-        .content {
-            padding: 30px;
-        }
-        
-        .schedule-form {
-            background: #f9f9f9;
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            gap: 20px;
             padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
+            min-height: calc(100vh - 150px);
         }
-        
-        .form-group {
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: #161B22;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .sidebar h3 {
             margin-bottom: 15px;
+            color: #8B949E;
+            font-size: 12px;
+            letter-spacing: 2px;
         }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
+
+        .profile-list {
+            list-style: none;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .profile-item {
+            padding: 12px;
+            margin: 5px 0;
+            background: #21262D;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .profile-item:hover {
+            background: #30363D;
+        }
+
+        .profile-item.active {
+            background: #1F6FEB;
+            border-left: 3px solid #39FF14;
+        }
+
+        .profile-name {
             font-weight: bold;
         }
-        
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+
+        .profile-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #238636;
         }
-        
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+
+        .add-profile-btn {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            background: #238636;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .add-profile-btn:hover {
+            background: #2EA043;
+        }
+
+        /* Content */
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
             gap: 20px;
         }
-        
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 10px 20px;
+
+        /* Stats Panel */
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: #161B22;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #39FF14;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #8B949E;
+            margin-top: 5px;
+        }
+
+        /* Schedule Panel */
+        .schedule-panel {
+            background: #161B22;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .schedule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .schedule-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .schedule-actions button, .action-btn {
+            background: #21262D;
             border: none;
-            border-radius: 4px;
+            padding: 8px 15px;
+            border-radius: 6px;
+            color: white;
             cursor: pointer;
-            font-size: 16px;
         }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+
+        .schedule-actions button:hover, .action-btn:hover {
+            background: #30363D;
         }
-        
-        .schedule-table {
+
+        .primary-btn {
+            background: #238636 !important;
+        }
+
+        .primary-btn:hover {
+            background: #2EA043 !important;
+        }
+
+        .secondary-btn {
+            background: #b6b6b6 !important;
+        }
+
+        .secondary-btn:hover {
+            background: #b9c3ce !important;
+        }
+
+        .danger-btn {
+            background: #DA3633 !important;
+        }
+
+        .danger-btn:hover {
+            background: #F85149 !important;
+        }
+
+        table {
             width: 100%;
             border-collapse: collapse;
         }
-        
-        .schedule-table th,
-        .schedule-table td {
+
+        th, td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #30363D;
         }
-        
-        .schedule-table th {
-            background: #667eea;
+
+        th {
+            background: #21262D;
+            color: #8B949E;
+            font-weight: normal;
+        }
+
+        tr:hover {
+            background: #1A202C;
+        }
+
+        .next-bell-row {
+            background: #1A3A1A !important;
+            border-left: 3px solid #39FF14;
+        }
+
+        .ring-btn {
+            background: #238636;
+            /* border: none;
+            padding: 5px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px; */
+        }
+
+        .ring-btn:hover {
+            background: #2EA043;
+        }
+
+        /* .edit-btn, .delete-btn {
+            padding: 4px 12px;
+            border: none;
+            margin: 0 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        } */
+
+        .edit-btn {
+            background: #1F6FEB;
+        }
+
+        .delete-btn {
+            background: #DA3633;
+        }
+
+        .activate-profile-btn {
+            background: #1F6FEB !important;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 10px;
+            cursor: pointer;
+            font-size: 11px;
             color: white;
         }
-        
-        .schedule-table tr:hover {
-            background: #f5f5f5;
+
+        .activate-profile-btn:hover {
+            background: #388BF0 !important;
         }
-        
-        .delete-btn {
-            background: #f44336;
-            padding: 5px 10px;
-            font-size: 12px;
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
         }
-        
-        .edit-btn {
-            background: #ff9800;
-            padding: 5px 10px;
-            font-size: 12px;
-            margin-right: 5px;
+
+        .modal-content {
+            background: #161B22;
+            border-radius: 10px;
+            padding: 25px;
+            min-width: 450px;
+            max-width: 500px;
         }
-        
-        .alert {
-            padding: 15px;
-            border-radius: 4px;
+
+        .modal-content h3 {
             margin-bottom: 20px;
         }
-        
-        .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+
+        .modal-content input, .modal-content select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #21262D;
+            border: 1px solid #30363D;
+            border-radius: 6px;
+            color: white;
         }
-        
-        .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* History Panel */
+        .history-panel {
+            background: #161B22;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid #30363D;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .success {
+            color: #39FF14;
+        }
+
+        .failed {
+            color: #F85149;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 15px;
+            color: #8B949E;
+            font-size: 11px;
+            border-top: 1px solid #30363D;
+        }
+
+        /* Audio list */
+        .audio-list {
+            max-height: 150px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+
+        .audio-item {
+            padding: 8px;
+            cursor: pointer;
+            border-bottom: 1px solid #30363D;
+        }
+
+        .audio-item:hover {
+            background: #21262D;
+        }
+
+        .active-profile-badge {
+            background: #1F6FEB;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🏫 School Bell Automation System</h1>
-            <p>Automatic Bell Schedule Management</p>
-        </div>
-        
-        <div class="status-bar">
-            <div class="status-indicator">
-                <div class="status-led" id="statusLed"></div>
-                <span id="statusText">Connected</span>
+    <div class="header">
+        <h1>🔔 SCHOOL BELL <span>Control Center</span></h1>
+        <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+            <div class="volume-control">
+                <span>🔊</span>
+                <input type="range" id="volumeSlider" min="0" max="100" value="80">
+                <span id="volumeValue">80%</span>
             </div>
-            <div>
-                Active Schedules: <strong id="activeCount">0</strong>
+            <div id="activeProfileBadge" class="active-profile-badge">📋 Profile: --</div>
+            <div class="status-badge">
+                <div id="statusIndicator" class="running-badge">🟢 RUNNING</div>
+                <button id="toggleBtn" class="btn toggle-btn">⏹ STOP</button>
             </div>
-        </div>
-        
-        <div class="content">
-            <div id="alertContainer"></div>
-            
-            <div class="schedule-form">
-                <h2>Add New Schedule</h2>
-                <form id="scheduleForm">
-                    <div class="form-group">
-                        <label>Schedule Name</label>
-                        <input type="text" id="scheduleName" required>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Hour</label>
-                            <input type="number" id="hour" min="0" max="23" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Minute</label>
-                            <input type="number" id="minute" min="0" max="59" required>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Days (comma separated: 0=Monday, 6=Sunday)</label>
-                        <input type="text" id="days" placeholder="0,1,2,3,4">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Audio File Path (optional)</label>
-                        <input type="text" id="audioFile" placeholder="assets/audio/bell.wav">
-                    </div>
-                    
-                    <button type="submit">Add Schedule</button>
-                </form>
-            </div>
-            
-            <h2>Schedule List</h2>
-            <table class="schedule-table" id="scheduleTable">
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Time</th>
-                        <th>Days</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="scheduleList"></tbody>
-            </table>
         </div>
     </div>
-    
+
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h3>📂 SCHEDULE PROFILES</h3>
+            <div id="profileList" class="profile-list"></div>
+            <button class="btn add-profile-btn" onclick="showAddProfileModal()">+ New Profile</button>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Stats -->
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <div class="stat-value" id="activeJobs">0</div>
+                    <div class="stat-label">Active Jobs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="totalSchedules">0</div>
+                    <div class="stat-label">Total Schedules</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="nextBellTime">--:--</div>
+                    <div class="stat-label">Next Bell</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="currentTime">--:--:--</div>
+                    <div class="stat-label">Server Time</div>
+                </div>
+            </div>
+
+            <!-- Schedule Panel -->
+            <div class="schedule-panel">
+                <div class="schedule-header">
+                    <h3>📋 Schedule List</h3>
+                    <div class="schedule-actions">
+                        <button id="profileName" style="color: #39FF14;" class="btn"></button>
+                        <button onclick="showAddScheduleModal()" class="btn primary-btn">+ Add Schedule</button>
+                        <button id="reloadBtn" class="btn">⟳ Reload</button>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table id="scheduleTable">
+                        <thead>
+                            <tr><th>Name</th><th>Time</th><th>Days</th><th>Audio</th><th>Status</th><th>Actions</th></tr>
+                        </thead>
+                        <tbody id="scheduleBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- History Panel -->
+            <div class="history-panel">
+                <h3>📜 Recent Events</h3>
+                <div id="historyList" class="history-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        SCHOOL BELL AUTOMATION SYSTEM | Real-time Monitoring | v1.0
+    </div>
+
+    <!-- Modals -->
+    <div id="profileModal" class="modal">
+        <div class="modal-content">
+            <h3 id="profileModalTitle">New Profile</h3>
+            <input type="text" id="profileNameInput" placeholder="Profile name">
+            <input type="text" id="profileDescInput" placeholder="Description (optional)">
+            <div class="modal-buttons">
+                <button onclick="closeModal('profileModal')" class="btn secondary-btn">Cancel</button>
+                <button onclick="saveProfile()" class="btn primary-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="scheduleModal" class="modal">
+        <div class="modal-content">
+            <h3 id="scheduleModalTitle">Add Schedule</h3>
+            <input type="text" id="scheduleNameInput" placeholder="Schedule name">
+            <input type="time" id="scheduleTimeInput" step="60">
+            <div>
+                <label>Days:</label>
+                <div id="daysCheckboxes" style="display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0;">
+                    <label><input type="checkbox" value="0"> Mon</label>
+                    <label><input type="checkbox" value="1"> Tue</label>
+                    <label><input type="checkbox" value="2"> Wed</label>
+                    <label><input type="checkbox" value="3"> Thu</label>
+                    <label><input type="checkbox" value="4"> Fri</label>
+                    <label><input type="checkbox" value="5"> Sat</label>
+                    <label><input type="checkbox" value="6"> Sun</label>
+                </div>
+                <div style="margin: 10px 0;">
+                    <button class="btn" onclick="setWeekdays()" style="padding: 4px 8px;">Weekdays</button>
+                    <button class="btn" onclick="setWeekend()" style="padding: 4px 8px;">Weekend</button>
+                    <button class="btn" onclick="setEveryday()" style="padding: 4px 8px;">Everyday</button>
+                </div>
+            </div>
+            <div>
+                <label>Custom Audio:</label>
+                <select id="audioSelect">
+                    <option value="">🔔 Default Bell</option>
+                </select>
+                <button onclick="uploadAudio()" style="padding: 4px 8px; margin-left: 5px;">📁 Upload</button>
+                <input type="file" id="audioFileInput" accept=".mp3,.wav,.ogg" style="display: none;">
+            </div>
+            <input type="hidden" id="editScheduleId">
+            <div class="modal-buttons">
+                <button onclick="closeModal('scheduleModal')" class="btn secondary-btn">Cancel</button>
+                <button onclick="saveSchedule()" class="btn primary-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const socket = io();
-        
-        socket.on('connect', function() {
-            updateStatusIndicator(true);
-            showAlert('Connected to server', 'success');
-            loadSchedules();
+        let currentProfileId = null;
+        let isRunning = true;
+        let nextBellId = null;
+
+        // ========== SOCKET EVENTS ==========
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            loadStatus();
+            loadProfiles();
+            loadAudioList();
+            loadHistory();
         });
-        
-        socket.on('disconnect', function() {
-            updateStatusIndicator(false);
-            showAlert('Disconnected from server', 'error');
+
+        socket.on('system_status', (data) => {
+            isRunning = data.running;
+            updateStatusUI();
+            loadStatus();
+            loadHistory();
         });
-        
-        socket.on('schedule_updated', function(data) {
-            loadSchedules();
+
+        socket.on('schedules_updated', () => {
+            if (currentProfileId) loadSchedules(currentProfileId);
+            loadHistory();
+            cachedNextBellTime = null;
+            loadStatus();
         });
-        
-        function updateStatusIndicator(connected) {
-            const led = document.getElementById('statusLed');
-            const text = document.getElementById('statusText');
-            if (connected) {
-                led.style.background = '#4CAF50';
-                text.textContent = 'Connected';
-            } else {
-                led.style.background = '#f44336';
-                text.textContent = 'Disconnected';
+
+        socket.on('profiles_updated', () => {
+            loadProfiles();
+        });
+
+        socket.on('profile_activated', (data) => {
+            loadProfiles();
+            cachedNextBellTime = null;
+            loadStatus();
+            if (currentProfileId === data.profile_id) {
+                loadSchedules(currentProfileId);
             }
-        }
-        
-        function showAlert(message, type) {
-            const container = document.getElementById('alertContainer');
-            const alert = document.createElement('div');
-            alert.className = `alert alert-${type}`;
-            alert.textContent = message;
-            container.appendChild(alert);
-            setTimeout(() => alert.remove(), 3000);
-        }
-        
-        async function loadSchedules() {
+        });
+
+        async function loadStatus() {
             try {
-                const response = await fetch('/api/schedules');
-                const schedules = await response.json();
-                displaySchedules(schedules);
+                const res = await fetch('/api/status');
+                const data = await res.json();
+                isRunning = data.scheduler_running;
+                updateStatusUI();
+                document.getElementById('activeJobs').textContent = data.active_jobs || 0;
+                document.getElementById('currentTime').textContent = data.current_time?.slice(11, 19) || '--:--:--';
                 
-                const statusResponse = await fetch('/api/status');
-                const status = await statusResponse.json();
-                document.getElementById('activeCount').textContent = status.active_schedules;
-            } catch (error) {
-                console.error('Error loading schedules:', error);
+                // SIMPAN next bell time untuk countdown
+                if (data.next_bell) {
+                    cachedNextBellTime = data.next_bell;
+                }
+                
+                // Tampilkan countdown (bukan waktu statis)
+                updateNextBellCountdown();
+                
+                if (data.active_profile) {
+                    document.getElementById('profileName').innerHTML = `📋 ${data.active_profile.name}`;
+                    if (document.getElementById('activeProfileBadge')) {
+                        document.getElementById('activeProfileBadge').innerHTML = `📋 Profile: ${data.active_profile.name}`;
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadProfiles() {
+            try {
+                const res = await fetch('/api/profiles');
+                const profiles = await res.json();
+                renderProfiles(profiles);
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadSchedules(profileId) {
+            try {
+                const res = await fetch(`/api/schedules/${profileId}`);
+                const schedules = await res.json();
+                const tbody = document.getElementById('scheduleBody');
+                tbody.innerHTML = '';
+                document.getElementById('totalSchedules').textContent = schedules.length;
+                
+                // Find next bell
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinute = now.getMinutes();
+                let nextSchedule = null;
+                
+                for (const s of schedules) {
+                    if (!s.is_active) continue;
+                    const [hour, minute] = s.time.split(':').map(Number);
+                    if (hour > currentHour || (hour === currentHour && minute > currentMinute)) {
+                        if (!nextSchedule || (hour < nextSchedule.hour) || 
+                            (hour === nextSchedule.hour && minute < nextSchedule.minute)) {
+                            nextSchedule = s;
+                        }
+                    }
+                }
+                nextBellId = nextSchedule?.id;
+                
+                for (const s of schedules) {
+                    const row = tbody.insertRow();
+                    if (s.id === nextBellId) row.className = 'next-bell-row';
+                    row.insertCell(0).textContent = s.name;
+                    row.insertCell(1).textContent = s.time;
+                    row.insertCell(2).textContent = s.days?.map(d => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][d]).join(', ') || 'Mon-Fri';
+                    row.insertCell(3).innerHTML = s.audio_file ? '🎵 Custom' : '🔔 Default';
+                    row.insertCell(4).innerHTML = s.is_active ? '✅ Active' : '❌ Inactive';
+                    const actionCell = row.insertCell(5);
+                    actionCell.innerHTML = `
+                        <button class="btn ring-btn" onclick="manualRing(${s.id})">🔔 Ring</button>
+                        <button class="btn edit-btn" onclick="editSchedule(${s.id}, '${s.name}', '${s.time}', ${JSON.stringify(s.days)}, '${s.audio_file || ''}')">Edit</button>
+                        <button class="btn delete-btn" onclick="deleteSchedule(${s.id})">Del</button>
+                    `;
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadHistory() {
+            try {
+                const res = await fetch('/api/history?limit=20');
+                const history = await res.json();
+                const container = document.getElementById('historyList');
+                container.innerHTML = '';
+                for (const h of history) {
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.innerHTML = `
+                        <span>${h.rang_at?.slice(11, 19)}</span>
+                        <span><strong>${h.schedule_name}</strong></span>
+                        <span>${h.profile_name || '-'}</span>
+                        <span class="${h.status === 'success' ? 'success' : 'failed'}">${h.status}</span>
+                    `;
+                    container.appendChild(div);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        async function loadAudioList() {
+            try {
+                const res = await fetch('/api/audio/list');
+                const files = await res.json();
+                const select = document.getElementById('audioSelect');
+                for (const f of files) {
+                    const option = document.createElement('option');
+                    option.value = f.path;
+                    option.textContent = `🎵 ${f.name}`;
+                    select.appendChild(option);
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        // ========== PROFILE ACTIONS ==========
+        async function activateProfile(profileId) {
+            try {
+                await fetch(`/api/profiles/${profileId}/activate`, { method: 'POST' });
+                loadProfiles();
+            } catch (e) { console.error(e); }
+        }
+
+        function showAddProfileModal() {
+            document.getElementById('profileModalTitle').textContent = 'New Profile';
+            document.getElementById('profileNameInput').value = '';
+            document.getElementById('profileDescInput').value = '';
+            document.getElementById('profileModal').style.display = 'flex';
+        }
+
+        async function saveProfile() {
+            const name = document.getElementById('profileNameInput').value;
+            if (!name) return;
+            await fetch('/api/profiles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, description: document.getElementById('profileDescInput').value })
+            });
+            closeModal('profileModal');
+            loadProfiles();
+            loadStatus();
+        }
+
+        function renderProfiles(profiles) {
+            const container = document.getElementById('profileList');
+            container.innerHTML = '';
+            for (const p of profiles) {
+                const div = document.createElement('div');
+                div.className = 'profile-item' + (p.is_active ? ' active' : '');
+                div.innerHTML = `
+                    <span class="profile-name">${p.is_active ? '●' : '○'} ${p.name}</span>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <span class="profile-badge">${p.schedule_count || 0}</span>
+                        ${!p.is_active ? `<button class="activate-profile-btn btn" data-id="${p.id}" style="background: #1F6FEB; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 11px;">✓ Activate</button>` : '<span style="font-size: 11px; color: #39FF14;">ACTIVE</span>'}
+                        ${!p.is_active ? `<button class="btn delete-profile-btn" data-id="${p.id}" style="background: #DA3633; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 11px;">🗑</button>` : ''}
+                    </div>
+                `;
+                
+                // Click on profile name (not button)
+                div.onclick = (e) => {
+                    if (e.target.classList.contains('activate-profile-btn')) return;
+                    if (e.target.classList.contains('delete-profile-btn')) return;
+                    loadSchedules(p.id);
+                    currentProfileId = p.id;
+                    // Highlight selected profile
+                    document.querySelectorAll('.profile-item').forEach(item => item.classList.remove('active'));
+                    div.classList.add('active');
+                };
+                
+                // Activate button handler
+                const activateBtn = div.querySelector('.activate-profile-btn');
+                if (activateBtn) {
+                    activateBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        activateProfile(p.id);
+                    };
+                }
+                
+                // Delete button handler
+                const deleteBtn = div.querySelector('.delete-profile-btn');
+                if (deleteBtn) {
+                    deleteBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if (confirm(`Delete profile "${p.name}"? This will delete all schedules in this profile.`)) {
+                            deleteProfile(p.id);
+                        }
+                    };
+                }
+                
+                container.appendChild(div);
+                if (p.is_active) {
+                    currentProfileId = p.id;
+                    loadSchedules(p.id);
+                }
             }
         }
-        
-        function displaySchedules(schedules) {
-            const tbody = document.getElementById('scheduleList');
-            tbody.innerHTML = '';
-            
-            schedules.forEach(schedule => {
-                const row = tbody.insertRow();
-                row.insertCell(0).textContent = schedule.name;
-                row.insertCell(1).textContent = `${schedule.hour.toString().padStart(2, '0')}:${schedule.minute.toString().padStart(2, '0')}`;
-                row.insertCell(2).textContent = schedule.days || 'Mon-Fri';
-                row.insertCell(3).innerHTML = schedule.is_active ? '✅ Active' : '❌ Inactive';
-                
-                const actions = row.insertCell(4);
-                const editBtn = document.createElement('button');
-                editBtn.textContent = 'Edit';
-                editBtn.className = 'edit-btn';
-                editBtn.onclick = () => editSchedule(schedule);
-                actions.appendChild(editBtn);
-                
-                const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = 'Delete';
-                deleteBtn.className = 'delete-btn';
-                deleteBtn.onclick = () => deleteSchedule(schedule.id);
-                actions.appendChild(deleteBtn);
-            });
+
+        // Add deleteProfile function
+        async function deleteProfile(profileId) {
+            try {
+                const res = await fetch(`/api/profiles/${profileId}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    loadProfiles();
+                    loadStatus();
+                    if (currentProfileId === profileId) {
+                        currentProfileId = null;
+                        document.getElementById('scheduleBody').innerHTML = '<tr><td colspan="6" style="text-align:center;">Select a profile</td></tr>';
+                    }
+                } else {
+                    alert(data.error || 'Failed to delete profile');
+                }
+            } catch (e) { console.error(e); }
         }
-        
-        document.getElementById('scheduleForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+
+        // ========== SCHEDULE ACTIONS ==========
+        function showAddScheduleModal() {
+            if (!currentProfileId) {
+                alert('Please select a profile first');
+                return;
+            }
+            document.getElementById('scheduleModalTitle').textContent = 'Add Schedule';
+            document.getElementById('scheduleNameInput').value = '';
+            document.getElementById('scheduleTimeInput').value = '07:00';
+            document.getElementById('editScheduleId').value = '';
+            setWeekdays();
+            document.getElementById('scheduleModal').style.display = 'flex';
+        }
+
+        function editSchedule(id, name, time, days, audioFile) {
+            document.getElementById('scheduleModalTitle').textContent = 'Edit Schedule';
+            document.getElementById('scheduleNameInput').value = name;
+            document.getElementById('scheduleTimeInput').value = time;
+            document.getElementById('editScheduleId').value = id;
             
-            const schedule = {
-                name: document.getElementById('scheduleName').value,
-                hour: parseInt(document.getElementById('hour').value),
-                minute: parseInt(document.getElementById('minute').value),
-                days: document.getElementById('days').value,
-                audio_file: document.getElementById('audioFile').value || null
+            // Set days
+            const checkboxes = document.querySelectorAll('#daysCheckboxes input');
+            checkboxes.forEach(cb => cb.checked = days?.includes(parseInt(cb.value)));
+            
+            // Set audio
+            const select = document.getElementById('audioSelect');
+            if (audioFile) {
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].value === audioFile) {
+                        select.selectedIndex = i;
+                        break;
+                    }
+                }
+            } else {
+                select.selectedIndex = 0;
+            }
+            
+            document.getElementById('scheduleModal').style.display = 'flex';
+        }
+
+        async function saveSchedule() {
+            const name = document.getElementById('scheduleNameInput').value;
+            const time = document.getElementById('scheduleTimeInput').value;
+            const [hour, minute] = time.split(':');
+            const days = Array.from(document.querySelectorAll('#daysCheckboxes input:checked')).map(cb => parseInt(cb.value));
+            const audioFile = document.getElementById('audioSelect').value;
+            const scheduleId = document.getElementById('editScheduleId').value;
+            
+            const data = {
+                profile_id: currentProfileId,
+                name,
+                hour: parseInt(hour),
+                minute: parseInt(minute),
+                days,
+                audio_file: audioFile || null
             };
             
-            try {
-                const response = await fetch('/api/schedules', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(schedule)
-                });
-                
-                if (response.ok) {
-                    showAlert('Schedule added successfully', 'success');
-                    document.getElementById('scheduleForm').reset();
-                    loadSchedules();
-                } else {
-                    showAlert('Failed to add schedule', 'error');
-                }
-            } catch (error) {
-                showAlert('Error adding schedule', 'error');
+            const url = scheduleId ? `/api/schedules/${scheduleId}` : '/api/schedules';
+            const method = scheduleId ? 'PUT' : 'POST';
+            
+            await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            closeModal('scheduleModal');
+            if (currentProfileId) loadSchedules(currentProfileId);
+        }
+
+        async function deleteSchedule(id) {
+            if (confirm('Delete this schedule?')) {
+                await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
+                if (currentProfileId) loadSchedules(currentProfileId);
+            }
+        }
+
+        async function manualRing(scheduleId) {
+            await fetch('/api/control/ring', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schedule_id: scheduleId })
+            });
+        }
+
+        // ========== AUDIO ==========
+        function uploadAudio() {
+            document.getElementById('audioFileInput').click();
+        }
+
+        document.getElementById('audioFileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const res = await fetch('/api/audio/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) {
+                const select = document.getElementById('audioSelect');
+                const option = document.createElement('option');
+                option.value = data.path;
+                option.textContent = `🎵 ${data.filename}`;
+                select.appendChild(option);
+                select.value = data.path;
+            } else {
+                alert('Upload failed: ' + data.error);
             }
         });
-        
-        async function deleteSchedule(id) {
-            if (confirm('Are you sure you want to delete this schedule?')) {
-                try {
-                    const response = await fetch(`/api/schedules/${id}`, {
-                        method: 'DELETE'
-                    });
-                    
-                    if (response.ok) {
-                        showAlert('Schedule deleted successfully', 'success');
-                        loadSchedules();
-                    } else {
-                        showAlert('Failed to delete schedule', 'error');
-                    }
-                } catch (error) {
-                    showAlert('Error deleting schedule', 'error');
-                }
+
+        // ========== DAYS PRESETS ==========
+        function setWeekdays() {
+            const checkboxes = document.querySelectorAll('#daysCheckboxes input');
+            checkboxes.forEach(cb => {
+                const val = parseInt(cb.value);
+                cb.checked = [0,1,2,3,4].includes(val);
+            });
+        }
+
+        function setWeekend() {
+            const checkboxes = document.querySelectorAll('#daysCheckboxes input');
+            checkboxes.forEach(cb => {
+                const val = parseInt(cb.value);
+                cb.checked = [5,6].includes(val);
+            });
+        }
+
+        function setEveryday() {
+            const checkboxes = document.querySelectorAll('#daysCheckboxes input');
+            checkboxes.forEach(cb => cb.checked = true);
+        }
+
+        // ========== SYSTEM CONTROL ==========
+        async function toggleSystem() {
+            const endpoint = isRunning ? '/api/control/stop' : '/api/control/start';
+            await fetch(endpoint, { method: 'POST' });
+            setTimeout(() => loadStatus(), 500);
+        }
+
+        function updateStatusUI() {
+            const indicator = document.getElementById('statusIndicator');
+            const toggleBtn = document.getElementById('toggleBtn');
+            if (isRunning) {
+                indicator.className = 'running-badge';
+                indicator.innerHTML = '🟢 RUNNING';
+                toggleBtn.innerHTML = '⏹ STOP';
+            } else {
+                indicator.className = 'stopped-badge';
+                indicator.innerHTML = '🔴 STOPPED';
+                toggleBtn.innerHTML = '▶ START';
             }
         }
-        
-        function editSchedule(schedule) {
-            document.getElementById('scheduleName').value = schedule.name;
-            document.getElementById('hour').value = schedule.hour;
-            document.getElementById('minute').value = schedule.minute;
-            document.getElementById('days').value = schedule.days || '';
-            document.getElementById('audioFile').value = schedule.audio_file || '';
+
+        // ========== VOLUME ==========
+        document.getElementById('volumeSlider').addEventListener('input', async (e) => {
+            const volume = e.target.value;
+            document.getElementById('volumeValue').textContent = volume + '%';
+            await fetch('/api/control/volume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ volume: parseInt(volume) })
+            });
+        });
+
+        // ========== NEXT BELL COUNTDOWN ==========
+        let cachedNextBellTime = null;
+
+        function updateNextBellCountdown() {
+            const nextBellElement = document.getElementById('nextBellTime');
+            if (!nextBellElement) return;
             
-            showAlert('Edit the schedule and click Add to update', 'success');
+            if (cachedNextBellTime && cachedNextBellTime !== '--:--') {
+                const now = new Date();
+                const [hours, minutes, seconds] = cachedNextBellTime.split(':').map(Number);
+                const bellTime = new Date();
+                bellTime.setHours(hours, minutes, seconds || 0, 0);
+                
+                // Jika bell sudah lewat hari ini, mundur ke besok
+                if (bellTime < now) {
+                    bellTime.setDate(bellTime.getDate() + 1);
+                }
+                
+                const diffMs = bellTime - now;
+                
+                if (diffMs <= 0) {
+                    nextBellElement.innerHTML = '🔔 NOW!';
+                    nextBellElement.style.color = '#FFA500';
+                    cachedNextBellTime = null;
+                    loadStatus(); // Refresh data
+                } else {
+                    const diffSecs = Math.floor(diffMs / 1000);
+                    const minutesLeft = Math.floor(diffSecs / 60);
+                    const secondsLeft = diffSecs % 60;
+                    
+                    if (minutesLeft >= 60) {
+                        const hoursLeft = Math.floor(minutesLeft / 60);
+                        nextBellElement.innerHTML = `${hoursLeft}h ${minutesLeft % 60}m`;
+                        nextBellElement.style.color = '#39FF14';
+                    } else if (minutesLeft > 0) {
+                        nextBellElement.innerHTML = `${minutesLeft}m ${secondsLeft}s`;
+                        nextBellElement.style.color = '#FFA500';
+                    } else {
+                        nextBellElement.innerHTML = `${secondsLeft}s`;
+                        nextBellElement.style.color = '#39FF14';
+                    }
+                }
+            } else {
+                nextBellElement.innerHTML = cachedNextBellTime || '--:--';
+                nextBellElement.style.color = '#8B949E';
+            }
         }
-        
-        setInterval(loadSchedules, 5000);
+
+        // ========== UTILITIES ==========
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        document.getElementById('reloadBtn').onclick = () => {
+            if (currentProfileId) loadSchedules(currentProfileId);
+            loadHistory();
+            loadStatus();
+        };
+
+        document.getElementById('toggleBtn').onclick = toggleSystem;
+
+        // Close modal when clicking outside
+        window.onclick = (e) => {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        };
+
+        // Initial load
+        loadHistory();
+
+        socket.on('system_status', (data) => {
+            isRunning = data.running;
+            updateStatusUI();
+            loadStatus();
+        });
+
+        socket.on('schedules_updated', () => {
+            if (currentProfileId) loadSchedules(currentProfileId);
+            loadHistory();
+        });
+
+        socket.on('profiles_updated', () => {
+            loadProfiles();
+        });
+
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleTimeString('en-GB');
+            updateNextBellCountdown();
+        }, 1000);
     </script>
 </body>
 </html>

@@ -1,32 +1,21 @@
-# core/schedule_manager.py (add profile methods)
+# core/schedule_manager.py
+
 from datetime import time, datetime
 from typing import List, Optional
 from sqlalchemy import and_, desc
 from core.database import get_db_manager
 from core.models import ScheduleProfile, BellSchedule, BellHistory
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
 class ScheduleManager:
     def __init__(self):
         self.db = get_db_manager()
-        self._active_profile_id = None
-        self._load_active_profile()
     
     def _get_session(self):
         return self.db.get_session()
-    
-    def _load_active_profile(self):
-        """Load active profile ID on init"""
-        session = self._get_session()
-        try:
-            profile = session.query(ScheduleProfile).filter(
-                ScheduleProfile.is_active == True
-            ).first()
-            self._active_profile_id = profile.id if profile else None
-        finally:
-            session.close()
     
     # ============= Profile CRUD =============
     
@@ -84,7 +73,7 @@ class ScheduleManager:
             if profile:
                 profile.is_active = True
                 session.commit()
-                self._active_profile_id = profile_id
+                # HAPUS: self._active_profile_id = profile_id
                 logger.info(f"Active profile switched to: {profile.name}")
                 return True
             return False
@@ -118,7 +107,7 @@ class ScheduleManager:
     # ============= Schedule CRUD with Profile =============
     
     def add_schedule(self, profile_id: int, name: str, bell_time: time, 
-                     days: List[int] = None, audio_file: str = None) -> Optional[int]:
+                    days: List[int] = None, audio_file: str = None) -> Optional[int]:
         """Add new bell schedule to profile"""
         session = self._get_session()
         try:
@@ -144,18 +133,26 @@ class ScheduleManager:
             session.close()
     
     def get_schedules_by_profile(self, profile_id: int = None, include_inactive: bool = False) -> List[BellSchedule]:
-        """Get schedules for specific profile (or active profile if None)"""
         session = self._get_session()
         try:
-            target_profile_id = profile_id or self._active_profile_id
+            if profile_id is None:
+                active = session.query(ScheduleProfile).filter(
+                    ScheduleProfile.is_active == True
+                ).first()
+                target_profile_id = active.id if active else None
+            else:
+                target_profile_id = profile_id
+
             if not target_profile_id:
                 return []
-            
+
             query = session.query(BellSchedule).filter(
                 BellSchedule.profile_id == target_profile_id
             )
+
             if not include_inactive:
                 query = query.filter(BellSchedule.is_active == True)
+
             return query.order_by(BellSchedule.bell_time).all()
         finally:
             session.close()
@@ -216,12 +213,22 @@ class ScheduleManager:
             return False
         finally:
             session.close()
+
+    def get_schedule_count_by_profile(self, profile_id: int) -> int:
+        """Get schedule count for a profile without lazy loading"""
+        session = self._get_session()
+        try:
+            return session.query(BellSchedule).filter(
+                BellSchedule.profile_id == profile_id
+            ).count()
+        finally:
+            session.close()
     
     # ============= History =============
     
     def log_bell_event(self, schedule_name: str, audio_played: str, 
-                       status: str, error_message: str = None, 
-                       schedule_id: int = None, profile_name: str = None):
+                    status: str, error_message: str = None, 
+                    schedule_id: int = None, profile_name: str = None):
         """Log bell ringing event with profile context"""
         session = self._get_session()
         try:
@@ -253,9 +260,11 @@ class ScheduleManager:
             session.close()
 
 _schedule_manager = None
+_schedule_lock = threading.Lock()
 
 def get_schedule_manager() -> ScheduleManager:
     global _schedule_manager
-    if _schedule_manager is None:
-        _schedule_manager = ScheduleManager()
+    with _schedule_lock:
+        if _schedule_manager is None:
+            _schedule_manager = ScheduleManager()
     return _schedule_manager
