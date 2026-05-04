@@ -97,9 +97,11 @@ class SchoolBellApp:
     
     def get_status(self) -> dict:
         """Get overall application status"""
+        scheduler_status = self.scheduler.get_status()
+    
         return {
             'initialized': self._initialized,
-            'scheduler': self.scheduler.get_status(),
+            'scheduler': scheduler_status,
             'config': {
                 'app_name': self.config.get('app_name'),
                 'version': self.config.get('version'),

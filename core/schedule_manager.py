@@ -1,34 +1,132 @@
-# core/schedule_manager.py
+# core/schedule_manager.py (add profile methods)
 from datetime import time, datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from sqlalchemy import and_, desc
 from core.database import get_db_manager
-from core.models import BellSchedule, SpecialSchedule, BellHistory
+from core.models import ScheduleProfile, BellSchedule, BellHistory
 import logging
 
 logger = logging.getLogger(__name__)
 
 class ScheduleManager:
-    """Handles all schedule-related database operations"""
-    
     def __init__(self):
         self.db = get_db_manager()
+        self._active_profile_id = None
+        self._load_active_profile()
     
     def _get_session(self):
-        """Get database session with context manager support"""
         return self.db.get_session()
     
-    # ============= Bell Schedule CRUD =============
+    def _load_active_profile(self):
+        """Load active profile ID on init"""
+        session = self._get_session()
+        try:
+            profile = session.query(ScheduleProfile).filter(
+                ScheduleProfile.is_active == True
+            ).first()
+            self._active_profile_id = profile.id if profile else None
+        finally:
+            session.close()
     
-    def add_schedule(self, name: str, bell_time: time, days: List[int] = None, 
-                     audio_file: str = None) -> Optional[int]:
-        """Add new bell schedule"""
+    # ============= Profile CRUD =============
+    
+    def create_profile(self, name: str, description: str = None, color: str = "#4CAF50") -> Optional[int]:
+        """Create new schedule profile"""
+        session = self._get_session()
+        try:
+            profile = ScheduleProfile(
+                name=name,
+                description=description,
+                color=color
+            )
+            session.add(profile)
+            session.commit()
+            logger.info(f"Created profile: {name}")
+            return profile.id
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to create profile: {e}")
+            return None
+        finally:
+            session.close()
+    
+    def get_all_profiles(self) -> List[ScheduleProfile]:
+        """Get all profiles"""
+        session = self._get_session()
+        try:
+            return session.query(ScheduleProfile).order_by(
+                ScheduleProfile.is_active.desc(),
+                ScheduleProfile.name
+            ).all()
+        finally:
+            session.close()
+    
+    def get_active_profile(self) -> Optional[ScheduleProfile]:
+        """Get currently active profile"""
+        session = self._get_session()
+        try:
+            return session.query(ScheduleProfile).filter(
+                ScheduleProfile.is_active == True
+            ).first()
+        finally:
+            session.close()
+    
+    def set_active_profile(self, profile_id: int) -> bool:
+        """Set which profile is active"""
+        session = self._get_session()
+        try:
+            # Deactivate all profiles
+            session.query(ScheduleProfile).update({ScheduleProfile.is_active: False})
+            # Activate selected profile
+            profile = session.query(ScheduleProfile).filter(
+                ScheduleProfile.id == profile_id
+            ).first()
+            if profile:
+                profile.is_active = True
+                session.commit()
+                self._active_profile_id = profile_id
+                logger.info(f"Active profile switched to: {profile.name}")
+                return True
+            return False
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to set active profile: {e}")
+            return False
+        finally:
+            session.close()
+    
+    def delete_profile(self, profile_id: int) -> bool:
+        """Delete profile and all its schedules"""
+        session = self._get_session()
+        try:
+            profile = session.query(ScheduleProfile).filter(
+                ScheduleProfile.id == profile_id
+            ).first()
+            if profile:
+                session.delete(profile)
+                session.commit()
+                logger.info(f"Deleted profile: {profile.name}")
+                return True
+            return False
+        except Exception as e:
+            session.rollback()
+            logger.error(f"Failed to delete profile: {e}")
+            return False
+        finally:
+            session.close()
+    
+    # ============= Schedule CRUD with Profile =============
+    
+    def add_schedule(self, profile_id: int, name: str, bell_time: time, 
+                     days: List[int] = None, audio_file: str = None) -> Optional[int]:
+        """Add new bell schedule to profile"""
         session = self._get_session()
         try:
             if days is None:
                 days = [0, 1, 2, 3, 4]
             
             schedule = BellSchedule(
+                profile_id=profile_id,
                 name=name,
                 bell_time=bell_time,
                 days_of_week=','.join(str(d) for d in days),
@@ -36,7 +134,7 @@ class ScheduleManager:
             )
             session.add(schedule)
             session.commit()
-            logger.info(f"Added schedule: {name} at {bell_time}")
+            logger.info(f"Added schedule '{name}' to profile {profile_id}")
             return schedule.id
         except Exception as e:
             session.rollback()
@@ -45,11 +143,17 @@ class ScheduleManager:
         finally:
             session.close()
     
-    def get_all_schedules(self, include_inactive: bool = False) -> List[BellSchedule]:
-        """Get all bell schedules"""
+    def get_schedules_by_profile(self, profile_id: int = None, include_inactive: bool = False) -> List[BellSchedule]:
+        """Get schedules for specific profile (or active profile if None)"""
         session = self._get_session()
         try:
-            query = session.query(BellSchedule)
+            target_profile_id = profile_id or self._active_profile_id
+            if not target_profile_id:
+                return []
+            
+            query = session.query(BellSchedule).filter(
+                BellSchedule.profile_id == target_profile_id
+            )
             if not include_inactive:
                 query = query.filter(BellSchedule.is_active == True)
             return query.order_by(BellSchedule.bell_time).all()
@@ -77,11 +181,9 @@ class ScheduleManager:
             if not schedule:
                 return False
             
-            # Handle special field conversions
-            if 'bell_time' in kwargs:
-                if isinstance(kwargs['bell_time'], str):
-                    time_parts = kwargs['bell_time'].split(':')
-                    kwargs['bell_time'] = time(int(time_parts[0]), int(time_parts[1]))
+            if 'bell_time' in kwargs and isinstance(kwargs['bell_time'], str):
+                time_parts = kwargs['bell_time'].split(':')
+                kwargs['bell_time'] = time(int(time_parts[0]), int(time_parts[1]))
             
             if 'days' in kwargs and isinstance(kwargs['days'], list):
                 kwargs['days_of_week'] = ','.join(str(d) for d in kwargs['days'])
@@ -92,7 +194,6 @@ class ScheduleManager:
                     setattr(schedule, key, value)
             
             session.commit()
-            logger.info(f"Updated schedule {schedule_id}")
             return True
         except Exception as e:
             session.rollback()
@@ -111,82 +212,6 @@ class ScheduleManager:
             if schedule:
                 session.delete(schedule)
                 session.commit()
-                logger.info(f"Deleted schedule {schedule_id}")
-                return True
-            return False
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Failed to delete schedule: {e}")
-            return False
-        finally:
-            session.close()
-    
-    def toggle_schedule(self, schedule_id: int) -> bool:
-        """Toggle schedule active status"""
-        session = self._get_session()
-        try:
-            schedule = session.query(BellSchedule).filter(
-                BellSchedule.id == schedule_id
-            ).first()
-            if schedule:
-                schedule.is_active = not schedule.is_active
-                session.commit()
-                logger.info(f"Toggled schedule {schedule_id} to {schedule.is_active}")
-                return True
-            return False
-        finally:
-            session.close()
-    
-    # ============= Special Schedule CRUD =============
-    
-    def add_special_schedule(self, name: str, schedule_date: datetime, 
-                             bell_time: time, audio_file: str = None) -> Optional[int]:
-        """Add special schedule for specific date"""
-        session = self._get_session()
-        try:
-            special = SpecialSchedule(
-                name=name,
-                schedule_date=schedule_date,
-                bell_time=bell_time,
-                audio_file=audio_file
-            )
-            session.add(special)
-            session.commit()
-            logger.info(f"Added special schedule: {name} on {schedule_date.date()}")
-            return special.id
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Failed to add special schedule: {e}")
-            return None
-        finally:
-            session.close()
-    
-    def get_special_schedule_for_date(self, date: datetime) -> List[SpecialSchedule]:
-        """Get special schedules for specific date"""
-        session = self._get_session()
-        try:
-            date_start = datetime(date.year, date.month, date.day)
-            date_end = datetime(date.year, date.month, date.day, 23, 59, 59)
-            return session.query(SpecialSchedule).filter(
-                and_(
-                    SpecialSchedule.schedule_date >= date_start,
-                    SpecialSchedule.schedule_date <= date_end,
-                    SpecialSchedule.is_active == True
-                )
-            ).order_by(SpecialSchedule.bell_time).all()
-        finally:
-            session.close()
-    
-    def delete_special_schedule(self, schedule_id: int) -> bool:
-        """Delete special schedule by ID"""
-        session = self._get_session()
-        try:
-            schedule = session.query(SpecialSchedule).filter(
-                SpecialSchedule.id == schedule_id
-            ).first()
-            if schedule:
-                session.delete(schedule)
-                session.commit()
                 return True
             return False
         finally:
@@ -196,12 +221,17 @@ class ScheduleManager:
     
     def log_bell_event(self, schedule_name: str, audio_played: str, 
                        status: str, error_message: str = None, 
-                       schedule_id: int = None):
-        """Log bell ringing event"""
+                       schedule_id: int = None, profile_name: str = None):
+        """Log bell ringing event with profile context"""
         session = self._get_session()
         try:
+            if profile_name is None:
+                active_profile = self.get_active_profile()
+                profile_name = active_profile.name if active_profile else "Unknown"
+            
             history = BellHistory(
                 schedule_id=schedule_id,
+                profile_name=profile_name,
                 schedule_name=schedule_name,
                 audio_played=audio_played,
                 status=status,
@@ -209,10 +239,6 @@ class ScheduleManager:
             )
             session.add(history)
             session.commit()
-            logger.debug(f"Logged bell event: {schedule_name} - {status}")
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Failed to log bell event: {e}")
         finally:
             session.close()
     
@@ -225,25 +251,10 @@ class ScheduleManager:
             ).limit(limit).all()
         finally:
             session.close()
-    
-    def get_history_by_date(self, date: datetime) -> List[BellHistory]:
-        """Get history for specific date"""
-        session = self._get_session()
-        try:
-            date_start = datetime(date.year, date.month, date.day)
-            date_end = datetime(date.year, date.month, date.day, 23, 59, 59)
-            return session.query(BellHistory).filter(
-                BellHistory.rang_at >= date_start,
-                BellHistory.rang_at <= date_end
-            ).order_by(BellHistory.rang_at).all()
-        finally:
-            session.close()
 
-# Singleton instance
 _schedule_manager = None
 
 def get_schedule_manager() -> ScheduleManager:
-    """Get singleton schedule manager instance"""
     global _schedule_manager
     if _schedule_manager is None:
         _schedule_manager = ScheduleManager()
