@@ -775,7 +775,7 @@ class MainWindow(QMainWindow):
         self.add_log("System initialized", "INFO")
 
     def setup_ui(self):
-        self.setWindowTitle("SCHOOL BELL CONTROL CONSOLE")
+        self.setWindowTitle("SCHOOL BELL AUTOMATION")
         self.setMinimumSize(1000, 600)
         self.resize(1200, 750)
         self.setStyleSheet(INDUSTRIAL_STYLE)
@@ -916,7 +916,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.log_console)
         
         # Footer
-        footer = QLabel("SCHOOL BELL AUTOMATION v1.0 | Industrial Control Console")
+        footer = QLabel("SCHOOL BELL AUTOMATION v1.0 | Ravaa Creative © 2026")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         footer.setStyleSheet("color: #8B949E; font-size: 10px; padding: 4px;")
         main_layout.addWidget(footer)

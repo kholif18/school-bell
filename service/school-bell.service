@@ -1,0 +1,14 @@
+[Unit]
+Description=School Bell Automation System
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/%i/school-bell
+ExecStart=/home/%i/school-bell/venv/bin/python /home/%i/school-bell/main.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

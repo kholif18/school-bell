@@ -1,49 +1,25 @@
-# =========================
-# Python cache
-# =========================
-__pycache__/
-*.py[cod]
-*$py.class
-
-# =========================
-# Virtual Environment
-# =========================
 venv/
-.env/
-.envrc/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# =========================
-# Database local
-# =========================
-db/*.db
-db/*.db-shm
-db/*.db-wal
-
-# =========================
-# Logs
-# =========================
+db/
 logs/
+
+*.db
+*.db-shm
+*.db-wal
 *.log
 
-# =========================
-# IDE / Editor
-# =========================
-.vscode/
 .idea/
-
-# =========================
-# OS Files
-# =========================
+.vscode/
 .DS_Store
-Thumbs.db
 
-# =========================
-# Audio Upload Optional
-# kalau nanti audio user upload banyak
-# =========================
-# assets/audio/*.mp3
-# assets/audio/*.wav
-# assets/audio/*.ogg
+assets/audio/*.mp3
+assets/audio/*.wav
+assets/audio/*.ogg
 
-# kecuali default audio tetap masuk
-!assets/audio/default_bell.wav
+dist/
+build/
+*.spec

@@ -1,0 +1,22 @@
+{
+  "app_name": "School Bell Automation",
+  "version": "1.0.0",
+  "audio": {
+    "volume": 80,
+    "default_bell": "assets/audio/default_bell.wav"
+  },
+  "scheduler": {
+    "timezone": "Asia/Jakarta",
+    "check_interval": 60
+  },
+  "web": {
+    "enabled": true,
+    "port": 5000,
+    "host": "0.0.0.0"
+  },
+  "logging": {
+    "level": "DEBUG",
+    "file": "logs/school_bell.log"
+  },
+  "auto_start": false
+}
