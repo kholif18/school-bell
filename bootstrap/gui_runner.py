@@ -4,8 +4,8 @@ import os
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
 from core.app_core import get_app
-from desktop.main_window import MainWindow
-from core.path_helper import app_path
+from apps.desktop.main_window import MainWindow
+from core.paths import app_path
 
 def run_gui():
     """Run desktop GUI mode - client only, no scheduler"""

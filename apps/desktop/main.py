@@ -1,21 +1,21 @@
-# run.py
+# apps/desktop/main.py
 import sys
 from PyQt6.QtWidgets import QApplication
-from core.app_core import get_app
-from apps.desktop.main_window import MainWindow
 
-def main():
+from apps.desktop.main_window import MainWindow
+from apps.desktop.tray_icon import TrayIcon
+
+
+def run():
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
-    
-    core_app = get_app()
-    core_app.initialize()
-    core_app.start()
-    
+
     window = MainWindow()
+    tray = TrayIcon(app, window)
+
     window.show()
-    
+
     sys.exit(app.exec())
 
+
 if __name__ == "__main__":
-    main()
+    run()

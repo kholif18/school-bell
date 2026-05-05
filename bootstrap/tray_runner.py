@@ -4,8 +4,8 @@ import os
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon
 from PyQt6.QtGui import QIcon
 from core.app_core import get_app
-from desktop.tray_icon import TrayIcon
-from core.path_helper import app_path
+from apps.desktop.tray_icon import TrayIcon
+from core.paths import app_path
 
 def run_tray():
     """Run system tray mode - client only, no scheduler"""
