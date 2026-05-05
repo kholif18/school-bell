@@ -609,6 +609,13 @@
             loadHistory();
         });
 
+        socket.on('scheduler_state_changed', (data) => {
+            console.log('Scheduler state changed:', data);
+            isRunning = data.running;
+            updateStatusUI();
+            loadStatus();
+        });
+
         socket.on('schedules_updated', () => {
             if (currentProfileId) loadSchedules(currentProfileId);
             loadHistory();

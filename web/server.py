@@ -34,6 +34,18 @@ def get_status():
     status = bell_app.get_status() if bell_app else {'scheduler': {'running': False}}
     active_profile = schedule_manager.get_active_profile()
     next_bell = status['scheduler'].get('next_bell')
+    session = schedule_manager._get_session()
+    try:
+        from core.models import SchedulerState
+        state = session.query(SchedulerState).filter(SchedulerState.id == 1).first()
+        is_running = state.is_running if state else False
+    finally:
+        session.close()
+    
+    status = bell_app.get_status() if bell_app else {'scheduler': {'running': is_running}}
+
+    # Override with database truth
+    status['scheduler']['running'] = is_running
     
     # Get next bell safely
     next_bell_str = None
@@ -220,8 +232,9 @@ def list_audio():
 def start_system():
     if bell_app:
         if bell_app.scheduler.start():
-            event_manager.emit('system_started')
+            # Broadcast to all connected clients
             socketio.emit('system_status', {'running': True})
+            event_manager.emit('system_started')
             return jsonify({'success': True, 'message': 'System started'})
         return jsonify({'success': False, 'message': 'Cannot start. No active profile or no schedules.'})
     return jsonify({'success': False, 'message': 'App not initialized'})
@@ -230,8 +243,9 @@ def start_system():
 def stop_system():
     if bell_app and bell_app.scheduler.running:
         bell_app.scheduler.stop()
-        event_manager.emit('system_stopped')
+        # Broadcast to all connected clients
         socketio.emit('system_status', {'running': False})
+        event_manager.emit('system_stopped')
         return jsonify({'success': True, 'message': 'System stopped'})
     return jsonify({'success': False, 'message': 'System already stopped'})
 
@@ -287,7 +301,7 @@ def handle_connect():
 
 # web/server.py (update start_web_server function)
 def start_web_server(app_instance, port=5000):
-    global bell_app, schedule_manager, event_manager
+    global bell_app, schedule_manager, event_manager, _events_bound
     bell_app = app_instance
     schedule_manager = bell_app.schedule_manager
     event_manager = get_event_manager()
@@ -304,6 +318,12 @@ def start_web_server(app_instance, port=5000):
         def on_system_stopped():
             socketio.emit('system_status', {'running': False})
         
+        def on_scheduler_state_changed(data):
+            """Handle scheduler state changes from engine"""
+            is_running = data.get('running', False)
+            socketio.emit('scheduler_state_changed', {'running': is_running})
+            socketio.emit('system_status', {'running': is_running})
+        
         def on_schedules_reloaded():
             socketio.emit('schedules_updated')
         
@@ -313,8 +333,10 @@ def start_web_server(app_instance, port=5000):
         def on_profile_activated(data):
             socketio.emit('profile_activated', data)
         
+        # Register event handlers
         event_manager.on('system_started', on_system_started)
         event_manager.on('system_stopped', on_system_stopped)
+        event_manager.on('scheduler_state_changed', on_scheduler_state_changed)  # <-- SEKARANG DEFINED
         event_manager.on('schedules_reloaded', on_schedules_reloaded)
         event_manager.on('profiles_updated', on_profiles_updated)
         event_manager.on('profile_activated', on_profile_activated)

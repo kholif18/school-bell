@@ -6,7 +6,7 @@ import logging
 import threading
 import time as time_sleep
 from zoneinfo import ZoneInfo
-
+from core.runtime_state import get_runtime_state
 from core.schedule_manager import get_schedule_manager
 from core.audio_manager import get_audio_manager
 from core.config_manager import get_config
@@ -85,6 +85,10 @@ class SchedulerEngine:
     
     def _ring_bell(self, schedule):
         """Ring bell for a schedule - protected by job lock"""
+        if not self.running:  # ← Guard: skip if scheduler not running
+            logger.debug(f"Skipping bell {schedule.name} - scheduler not running")
+            return
+        
         with self._job_lock:
             with self.audio_manager._lock:
                 current_time = datetime.now().strftime('%H:%M:%S')
@@ -149,33 +153,43 @@ class SchedulerEngine:
             return loaded_count
 
     def start(self):
-        """Start the scheduler - thread-safe"""
         with self._scheduler_lock:
             if self.running:
                 logger.warning("Scheduler already running")
-                return False
+                return True
 
-            # Pastikan ada active profile
             active_profile = self.schedule_manager.get_active_profile()
             if not active_profile:
-                logger.error("No active profile found. Please activate a profile first.")
+                logger.error("No active profile found")
                 return False
 
             self._ensure_scheduler()
             loaded = self.load_jobs_from_active_profile()
 
             if loaded <= 0:
-                logger.error(f"No schedules in profile '{active_profile.name}'. Please add schedules first.")
+                logger.warning("No schedules loaded")
                 return False
 
-            self.scheduler.start()
-            self.running = True
+            # START SCHEDULER - SEPARATE FROM STATE SAVING
+            try:
+                self.scheduler.start()
+                self.running = True
+            except Exception as e:
+                logger.error(f"Scheduler core start failed: {e}")
+                return False
+
+            # SAVE STATE - Don't let failure affect scheduler running status
+            try:
+                next_bell = self.get_next_bell_time()
+                get_runtime_state().save(is_running=True, active_jobs=loaded, next_bell=next_bell)
+            except Exception as e:
+                logger.error(f"Runtime state save failed after start: {e}")
+
             self.start_watchdog()
             logger.info(f"🚀 Scheduler started with {loaded} jobs")
             return True
 
     def stop(self):
-        """Stop the scheduler and ensure clean shutdown"""
         with self._scheduler_lock:
             if not self.running:
                 logger.warning("Scheduler not running")
@@ -192,16 +206,69 @@ class SchedulerEngine:
             self.scheduler = None
             time_sleep.sleep(0.2)
             self._create_scheduler()
+
+            # SAVE TO DATABASE - next_bell = None explicitly
+            try:
+                get_runtime_state().save(is_running=False, active_jobs=0, next_bell=None)
+            except Exception as e:
+                logger.error(f"Failed to save runtime state on stop: {e}")
+
             logger.info("⏹️ Scheduler stopped")
             return True
+        
+    def _save_state_to_db(self, is_running):
+        """Save scheduler state to database for cross-process sync"""
+        session = self.schedule_manager._get_session()
+        try:
+            from core.models import SchedulerState
+            state = session.query(SchedulerState).filter(SchedulerState.id == 1).first()
+            if not state:
+                state = SchedulerState(id=1)
+                session.add(state)
+            
+            state.is_running = is_running
+            if is_running:
+                state.last_started = datetime.now()
+            else:
+                state.last_stopped = datetime.now()
+            state.updated_at = datetime.now()
+            session.commit()
+            
+            # Broadcast event to all listeners
+            from core.event_manager import get_event_manager
+            get_event_manager().emit('scheduler_state_changed', {'running': is_running})
+        except Exception as e:
+            logger.error(f"Failed to save scheduler state: {e}")
+        finally:
+            session.close()
+
+    def get_scheduler_state_from_db(self):
+        """Get scheduler state from database (cross-process source of truth)"""
+        session = self.schedule_manager._get_session()
+        try:
+            from core.models import SchedulerState
+            state = session.query(SchedulerState).filter(SchedulerState.id == 1).first()
+            if state:
+                self.running = state.is_running
+                return state.is_running
+            return False
+        except Exception as e:
+            logger.error(f"Failed to get scheduler state: {e}")
+            return self.running
+        finally:
+            session.close()
     
     def reload(self):
-        """Reload schedules based on current active profile"""
+        """Reload schedules - WITHOUT outer lock to prevent contention"""
         if self.running:
-            with self._job_lock:
-                logger.info("Reloading schedules...")
-                self.load_jobs_from_active_profile()
-                logger.info("✓ Scheduler reloaded")
+            logger.info("Reloading schedules...")
+            loaded = self.load_jobs_from_active_profile()  # This has its own lock
+            next_bell = self.get_next_bell_time()
+            try:
+                get_runtime_state().save(is_running=True, active_jobs=loaded, next_bell=next_bell)
+            except Exception as e:
+                logger.error(f"Failed to save runtime state during reload: {e}")
+            logger.info("✓ Scheduler reloaded")
     
     def switch_profile(self, profile_id: int) -> bool:
         """Switch to a different profile and reload"""

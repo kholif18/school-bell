@@ -28,6 +28,20 @@ class ScheduleProfile(Base):
     def __repr__(self):
         return f"<ScheduleProfile(name='{self.name}', active={self.is_active})>"
 
+class SchedulerState(Base):
+    __tablename__ = 'scheduler_state'
+    
+    id = Column(Integer, primary_key=True, default=1)
+    is_running = Column(Boolean, default=False)
+    active_jobs = Column(Integer, default=0)
+    next_bell = Column(DateTime, nullable=True)
+    last_started = Column(DateTime, nullable=True)
+    last_stopped = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, onupdate=func.now())
+
+    def __repr__(self):
+        return f"<SchedulerState(running={self.is_running})>"
+
 class BellSchedule(Base):
     __tablename__ = 'bell_schedules'
     

@@ -24,6 +24,13 @@ class ProcessLock:
             self.fp.flush()
             return True
         except (BlockingIOError, OSError):
+            # Read the PID of the existing process
+            try:
+                with open(LOCK_FILE, 'r') as f:
+                    pid = f.read().strip()
+                print(f"Engine already running with PID: {pid}")
+            except:
+                pass
             return False
 
     def release(self):
@@ -37,3 +44,9 @@ class ProcessLock:
             except:
                 pass
             self.fp = None
+
+# Export instance for external use
+_lock = ProcessLock()  # <-- ADD THIS
+
+def get_lock():
+    return _lock

@@ -18,5 +18,5 @@
     "level": "DEBUG",
     "file": "logs/school_bell.log"
   },
-  "auto_start": false
+  "auto_start": true
 }

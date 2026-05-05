@@ -1,169 +1,69 @@
-# core/app_core.py (FIXED)
-import logging
-import sys
+# core/app_core.py
+from core.ipc_bus import get_ipc_bus
+from core.runtime_state import get_runtime_state
 import threading
-from typing import Optional
+import time
 
-from core.database import get_db_manager
-from core.schedule_manager import get_schedule_manager
-from core.audio_manager import get_audio_manager
-from core.scheduler_engine import SchedulerEngine
-from core.config_manager import get_config
-from core.event_manager import get_event_manager
-from core.path_helper import DB_PATH, LOG_PATH, CONFIG_PATH
-
-# Setup logging (only once)
-_logging_setup = False
-
-def setup_logging():
-    global _logging_setup
-    if _logging_setup:
-        return
-    
-    config = get_config()
-    log_level = config.get('logging.level', 'INFO')
-    log_file = config.get('logging.file', LOG_PATH)
-    
-    import os
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
-    
-    logging.basicConfig(
-        level=getattr(logging, log_level),
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    _logging_setup = True
-
-class SchoolBellApp:
-    """Main application class - orchestrates all components"""
+class AppClient:
+    """Client untuk GUI/Tray - komunikasi via IPC ke master"""
     
     def __init__(self):
-        self.config = get_config()
-        self.db_manager = get_db_manager()
-        self.schedule_manager = get_schedule_manager()
-        self.audio_manager = get_audio_manager()  # SINGLETON
-        self.scheduler = SchedulerEngine()
-        self.event_manager = get_event_manager()
-        self._initialized = False
-        self.web_thread = None
+        self.ipc = get_ipc_bus()
+        self._listeners = []
+        self._polling = False
+        self._poll_thread = None
     
-    def initialize(self) -> bool:
-        """Initialize all components"""
-        try:
-            setup_logging()
-            logger = logging.getLogger(__name__)
-            logger.info(f"Initializing {self.config.get('app_name')} v{self.config.get('version')}")
-            
-            # Set volume from config
-            volume = self.config.get('audio.volume', 80)
-            self.audio_manager.set_volume(volume)
-            
-            self._initialized = True
-            logger.info("Application initialized successfully")
-            return True
-            
-        except Exception as e:
-            logging.error(f"Failed to initialize: {e}")
-            return False
+    def send_command(self, command: str, payload: dict = None):
+        """Kirim command ke master process"""
+        self.ipc.send(command, payload or {})
     
-    def start(self):
-        """Start the application"""
-        if not self._initialized:
-            if not self.initialize():
-                return False
-        
-        logger = logging.getLogger(__name__)
-        logger.info("Starting School Bell Application...")
-        
-        # Start scheduler
-        self.scheduler.start()
-        
-        # Emit event AFTER successful start (FIX: no dead code)
-        self.event_manager.emit('system_started')
-        
-        logger.info("Application running successfully")
-        return True
+    def start_scheduler(self):
+        self.send_command("START_SCHEDULER")
     
-    def stop(self):
-        """Stop the application"""
-        logger = logging.getLogger(__name__)
-        logger.info("Stopping School Bell Application...")
-        
-        # Stop scheduler
-        self.scheduler.stop()
-        
-        # Emit event
-        self.event_manager.emit('system_stopped')
-        
-        # Close database
-        self.db_manager.close()
-        
-        logger.info("Application stopped")
-
-    def shutdown_all(self):
-        """Complete shutdown of all resources"""
-        logger = logging.getLogger(__name__)
-        logger.info("Shutting down all resources...")
-        
-        # Stop scheduler
-        try:
-            self.scheduler.stop()
-        except Exception as e:
-            logger.warning(f"Scheduler stop error: {e}")
-        
-        # Stop audio
-        try:
-            self.audio_manager.stop()
-            import pygame
-            pygame.mixer.quit()
-        except Exception as e:
-            logger.warning(f"Audio shutdown error: {e}")
-        
-        # Close database
-        try:
-            self.db_manager.close()
-        except Exception as e:
-            logger.warning(f"Database close error: {e}")
-        
-        logger.info("Shutdown complete")
-    
-    def get_status(self) -> dict:
-        """Get overall application status"""
-        scheduler_status = self.scheduler.get_status()
-        
-        return {
-            'initialized': self._initialized,
-            'scheduler': scheduler_status,
-            'config': {
-                'app_name': self.config.get('app_name'),
-                'version': self.config.get('version'),
-                'volume': self.config.get('audio.volume')
-            }
-        }
+    def stop_scheduler(self):
+        self.send_command("STOP_SCHEDULER")
     
     def reload_schedules(self):
-        """Reload schedules (after database changes)"""
-        self.scheduler.reload()
+        self.send_command("RELOAD_SCHEDULES")
     
-    def start_web(self, port=5000):
-        """Start web server in separate thread"""
-        from web.server import start_web_server
-        self.web_thread = threading.Thread(target=start_web_server, args=(self, port), daemon=True)
-        self.web_thread.start()
-        logger = logging.getLogger(__name__)
-        logger.info(f"Web server started on http://localhost:{port}")
+    def switch_profile(self, profile_id: int):
+        self.send_command("SWITCH_PROFILE", {"profile_id": profile_id})
+    
+    def get_status(self):
+        """Baca status dari database (source of truth)"""
+        state = get_runtime_state().get()
+        return {
+            'running': state.is_running if state else False,
+            'active_jobs': state.active_jobs if state else 0,
+            'next_bell': state.next_bell if state else None,
+            'updated_at': state.updated_at if state else None
+        }
+    
+    def start_polling(self, interval_seconds: float = 1.0, callback=None):
+        """Polling status untuk real-time UI update"""
+        self._polling = True
+        
+        def poll():
+            while self._polling:
+                try:
+                    status = self.get_status()
+                    if callback:
+                        callback(status)
+                except Exception as e:
+                    print(f"Polling error: {e}")
+                time.sleep(interval_seconds)
+        
+        self._poll_thread = threading.Thread(target=poll, daemon=True)
+        self._poll_thread.start()
+    
+    def stop_polling(self):
+        self._polling = False
 
 # Singleton
-_app_instance = None
-_app_lock = threading.Lock()
+_app_client = None
 
-def get_app() -> SchoolBellApp:
-    """Get singleton app instance"""
-    global _app_instance
-    with _app_lock:
-        if _app_instance is None:
-            _app_instance = SchoolBellApp()
-    return _app_instance
+def get_app_client():
+    global _app_client
+    if _app_client is None:
+        _app_client = AppClient()
+    return _app_client

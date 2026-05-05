@@ -1,10 +1,12 @@
 # core/database.py
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, Session, declarative_base, scoped_session
 from core.path_helper import DB_PATH
 import os
 import threading
+import logging
 
+logger = logging.getLogger(__name__)
 Base = declarative_base()
 
 class DatabaseManager:
@@ -13,6 +15,7 @@ class DatabaseManager:
         self._engine = None
         self._session_factory = None
         self._initialize()
+        self._auto_migrate()  # <-- TAMBAHKAN INI
 
     def _initialize(self):
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
@@ -31,6 +34,31 @@ class DatabaseManager:
             autoflush=False,
             autocommit=False
         ))
+
+    def _auto_migrate(self):
+        """Auto-create scheduler_state table and default data"""
+        try:
+            # Import models here to avoid circular import
+            from core.models import SchedulerState
+            
+            # Create all tables (including new ones)
+            Base.metadata.create_all(self._engine)
+            
+            # Insert default scheduler state if not exists
+            session = self.get_session()
+            try:
+                from core.models import SchedulerState
+                state = session.query(SchedulerState).filter(SchedulerState.id == 1).first()
+                if not state:
+                    state = SchedulerState(id=1, is_running=False)
+                    session.add(state)
+                    session.commit()
+                    logger.info("✓ Scheduler state table initialized")
+            finally:
+                session.close()
+                
+        except Exception as e:
+            logger.warning(f"Auto-migration warning: {e}")
 
     def create_tables(self):
         Base.metadata.create_all(self._engine)
@@ -56,5 +84,5 @@ def get_db_manager() -> DatabaseManager:
         with _db_lock:
             if _db_manager_instance is None:
                 _db_manager_instance = DatabaseManager()
-                _db_manager_instance.create_tables()
+                # create_tables sudah dipanggil di _auto_migrate
     return _db_manager_instance

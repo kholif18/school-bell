@@ -5,43 +5,51 @@ from core.app_core import get_app
 from bootstrap.process_lock import ProcessLock
 
 _runtime = None
-_engine_started = False
 _lock = ProcessLock()
 
 logger = logging.getLogger(__name__)
 
-def boot_runtime():
-    """Boot runtime - only one instance will start the engine"""
-    global _runtime, _engine_started
+def boot_runtime(is_master: bool = False):
+    """
+    Boot runtime - handles process locking and mode detection
+    
+    Args:
+        is_master: True for headless (will start scheduler), False for clients
+    """
+    global _runtime
 
     if _runtime is not None:
         return _runtime
 
     app = get_app()
 
-    if not _engine_started:
+    if is_master:
+        # MASTER MODE - acquire lock and start engine
         acquired = _lock.acquire()
-
         if acquired:
             print("=" * 50)
-            print("🔧 Starting core engine (first instance)...")
+            print("🔧 Starting MASTER engine...")
             print("=" * 50)
-            app.initialize()
-            app.start()
+            app.initialize(is_master=True)
+            app.start()  # Start scheduler
             app.start_web(port=5000)
-            _engine_started = True
-            print("✓ Core engine started successfully")
+            print("✓ Master engine started successfully")
         else:
-            print("=" * 50)
-            print("🔄 Core engine already running (attaching to existing)...")
-            print("=" * 50)
-            # Attach to existing engine (no need to re-init)
-            _engine_started = True
-            print("✓ Attached to running engine")
+            print("ERROR: Another master is already running!")
+            print("Use --tray or default mode for clients.")
+            sys.exit(1)
+    else:
+        # CLIENT MODE - attach to existing engine
+        print("=" * 50)
+        print("🔄 Starting CLIENT (attaching to existing engine)...")
+        print("=" * 50)
+        app.initialize(is_master=False)
+        app.start_web(port=5000)  # Web for monitoring only
+        print("✓ Client attached to engine")
 
     _runtime = app
     return _runtime
 
 def is_engine_running():
     """Check if engine is already running"""
-    return _engine_started or _lock.acquire() is False
+    return _lock.acquire() is False
