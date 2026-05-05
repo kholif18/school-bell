@@ -149,32 +149,40 @@ class SchedulerEngine:
             return loaded_count
 
     def start(self):
+        """Start the scheduler - thread-safe"""
         with self._scheduler_lock:
             if self.running:
                 logger.warning("Scheduler already running")
-                return
+                return False
+
+            # Pastikan ada active profile
+            active_profile = self.schedule_manager.get_active_profile()
+            if not active_profile:
+                logger.error("No active profile found. Please activate a profile first.")
+                return False
 
             self._ensure_scheduler()
             loaded = self.load_jobs_from_active_profile()
 
             if loaded <= 0:
-                logger.warning("No schedules loaded, scheduler not started")
-                return
+                logger.error(f"No schedules in profile '{active_profile.name}'. Please add schedules first.")
+                return False
 
             self.scheduler.start()
             self.running = True
             self.start_watchdog()
             logger.info(f"🚀 Scheduler started with {loaded} jobs")
+            return True
 
     def stop(self):
         """Stop the scheduler and ensure clean shutdown"""
         with self._scheduler_lock:
             if not self.running:
                 logger.warning("Scheduler not running")
-                return
+                return False
 
             self.stop_watchdog()
-            
+
             try:
                 self.scheduler.shutdown(wait=False)
             except Exception as e:
@@ -185,6 +193,7 @@ class SchedulerEngine:
             time_sleep.sleep(0.2)
             self._create_scheduler()
             logger.info("⏹️ Scheduler stopped")
+            return True
     
     def reload(self):
         """Reload schedules based on current active profile"""

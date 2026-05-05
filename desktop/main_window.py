@@ -482,6 +482,9 @@ class SettingsTab(QWidget):
         volume = self.app.config.get('audio.volume', 80)
         self.volume_slider.setValue(volume)
         self.volume_label.setText(f"{volume}%")
+
+        auto_start = self.app.config.get('auto_start', False)
+        self.auto_start_cb.setChecked(auto_start)
     
     def on_volume_change(self, val):
         self.volume_label.setText(f"{val}%")
@@ -648,6 +651,8 @@ class ScheduleDialog(QDialog):
         self.setup_ui()
         if schedule:
             self.load_data()
+        else:
+            self.set_days([0,1,2,3,4,5])
     
     def setup_ui(self):
         self.setWindowTitle("Schedule" + (" Edit" if self.schedule else " Add"))
@@ -705,8 +710,6 @@ class ScheduleDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
         
-        self.set_days([0,1,2,3,4])
-    
     def set_days(self, days_list):
         for i, cb in enumerate(self.days):
             cb.setChecked(i in days_list)
@@ -727,7 +730,7 @@ class ScheduleDialog(QDialog):
             'name': self.name_input.text(),
             'hour': t.hour(),
             'minute': t.minute(),
-            'days': days if days else [0,1,2,3,4],
+            'days': days if days else [0,1,2,3,4,5],
             'audio_file': self.audio_picker.get_path()
         }
     
@@ -752,6 +755,7 @@ class MainWindow(QMainWindow):
         self.next_bell_timer = None
         self.table_model = None
         self.proxy_model = None
+        self._logs = []
 
         # ========== THREAD-SAFE BRIDGE ==========
         self.bridge = UiBridge()
@@ -773,6 +777,13 @@ class MainWindow(QMainWindow):
         self.load_profiles()
         self.start_timers()
         self.add_log("System initialized", "INFO")
+
+        # ========== AUTO-START SCHEDULER ==========
+        auto_start = self.app.config.get('auto_start', False)
+        if auto_start:
+            self.add_log("Auto-start enabled, starting scheduler...", "INFO")
+            # Tunggu sebentar agar UI siap
+            QTimer.singleShot(500, self._auto_start_scheduler)
 
     def setup_ui(self):
         self.setWindowTitle("SCHOOL BELL AUTOMATION")
@@ -837,7 +848,7 @@ class MainWindow(QMainWindow):
         
         # RIGHT: Tab Widget
         self.tab_widget = QTabWidget()
-        
+
         # Tab 1: Schedules
         schedules_tab = QWidget()
         schedules_layout = QVBoxLayout(schedules_tab)
@@ -871,50 +882,68 @@ class MainWindow(QMainWindow):
         self.ring_btn.clicked.connect(self.test_ring)
         action_bar.addWidget(self.ring_btn)
 
+        self.stop_test_btn = QPushButton("⏹ Stop Test")
+        self.stop_test_btn.setObjectName("warning_btn")
+        self.stop_test_btn.clicked.connect(self.stop_test)
+        action_bar.addWidget(self.stop_test_btn)
+
         action_bar.addStretch()
-        
+
         # SINGLE TOGGLE BUTTON (Start/Stop)
         self.toggle_btn = QPushButton("⏹ STOP SYSTEM")
         self.toggle_btn.setObjectName("stop_btn")
         self.toggle_btn.clicked.connect(self.toggle_system)
         action_bar.addWidget(self.toggle_btn)
-        
+
         self.reload_btn = QPushButton("⟳ Reload")
         self.reload_btn.clicked.connect(self.reload_schedules)
         action_bar.addWidget(self.reload_btn)
-        
+
         schedules_layout.addLayout(action_bar)
-        
+
         self.tab_widget.addTab(schedules_tab, "📋 Schedules")
-        
+
         # Tab 2: History
         self.history_tab = HistoryTab(self.app.schedule_manager)
         self.tab_widget.addTab(self.history_tab, "📜 History")
-        
-        # Tab 3: Settings
+
+        # Tab 3: Log Console (BARU)
+        log_tab = QWidget()
+        log_layout = QVBoxLayout(log_tab)
+
+        # Log console dengan filter
+        log_filter_bar = QHBoxLayout()
+        log_filter_bar.addWidget(QLabel("Filter:"))
+        self.log_filter_input = QLineEdit()
+        self.log_filter_input.setPlaceholderText("Filter logs...")
+        self.log_filter_input.textChanged.connect(self.filter_logs)
+        log_filter_bar.addWidget(self.log_filter_input)
+
+        log_filter_bar.addStretch()
+
+        self.clear_log_btn = QPushButton("Clear")
+        self.clear_log_btn.clicked.connect(self.clear_logs)
+        log_filter_bar.addWidget(self.clear_log_btn)
+
+        log_layout.addLayout(log_filter_bar)
+
+        self.log_console = QTextEdit()
+        self.log_console.setReadOnly(True)
+        self.log_console.setFont(QFont("Consolas", 10))
+        log_layout.addWidget(self.log_console)
+
+        self.tab_widget.addTab(log_tab, "📝 Log Console")
+
+        # Tab 4: Settings
         self.settings_tab = SettingsTab(self.app)
         self.tab_widget.addTab(self.settings_tab, "⚙ Settings")
         
         middle_split.addWidget(left_panel)
-        middle_split.addWidget(self.tab_widget)
+        middle_split.addWidget(self.tab_widget)   # <-- BARIS INI SEBELUMNYA HILANG!
         middle_split.setSizes([220, self.width() - 220])
+
         main_layout.addWidget(middle_split, 1)
-        
-        # ========== LOG CONSOLE ==========
-        log_header = QHBoxLayout()
-        log_header.addWidget(QLabel("📋 EVENT LOG"))
-        log_header.addStretch()
-        self.clear_log_btn = QPushButton("Clear")
-        self.clear_log_btn.clicked.connect(lambda: self.log_console.clear())
-        log_header.addWidget(self.clear_log_btn)
-        main_layout.addLayout(log_header)
-        
-        self.log_console = QTextEdit()
-        self.log_console.setReadOnly(True)
-        self.log_console.setMaximumHeight(120)
-        self.log_console.setMinimumHeight(80)
-        main_layout.addWidget(self.log_console)
-        
+
         # Footer
         footer = QLabel("SCHOOL BELL AUTOMATION v1.0 | Ravaa Creative © 2026")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -928,6 +957,26 @@ class MainWindow(QMainWindow):
         self.table.setColumnWidth(3, 100)  # Suara
         self.table.setColumnWidth(4, 80)   # Status
 
+    def _auto_start_scheduler(self):
+        """Auto start scheduler after UI is ready"""
+        # Pastikan ada active profile
+        active_profile = self.app.schedule_manager.get_active_profile()
+        if not active_profile:
+            self.add_log("Auto-start skipped: No active profile", "WARNING")
+            return
+        
+        # Pastikan profile memiliki schedules
+        schedules = self.app.schedule_manager.get_schedules_by_profile(active_profile.id, include_inactive=False)
+        if not schedules:
+            self.add_log(f"Auto-start skipped: No schedules in profile '{active_profile.name}'", "WARNING")
+            return
+        
+        # Start scheduler
+        if self.app.scheduler.start():
+            self.add_log("Scheduler auto-started successfully", "SUCCESS")
+        else:
+            self.add_log("Scheduler auto-start failed", "ERROR")
+            
     def on_system_started(self):
         self.add_log("System started via remote", "INFO")
         self.update_system_status()
@@ -958,6 +1007,7 @@ class MainWindow(QMainWindow):
             self._update_next_bell_display()
 
     def toggle_system(self):
+        """Toggle system start/stop dengan sinkronisasi yang benar"""
         if self.app.scheduler.running:
             # Running -> Stop
             self.app.scheduler.stop()
@@ -967,51 +1017,148 @@ class MainWindow(QMainWindow):
             self.toggle_btn.setObjectName("start_btn")
         else:
             # Stopped -> Start
-            self.app.scheduler.start()
-            self.add_log("System STARTED", "SUCCESS")
-            self.superbar.set_running(True)
-            self.toggle_btn.setText("⏹ STOP SYSTEM")
-            self.toggle_btn.setObjectName("stop_btn")
+            # Pastikan ada active profile
+            active_profile = self.app.schedule_manager.get_active_profile()
+            if not active_profile:
+                QMessageBox.warning(self, "Error", "No active profile found.\nPlease activate a profile first.")
+                return
+            
+            # Pastikan profile memiliki schedules
+            schedules = self.app.schedule_manager.get_schedules_by_profile(active_profile.id, include_inactive=False)
+            if not schedules:
+                QMessageBox.warning(self, "Error", f"No schedules in profile '{active_profile.name}'.\nPlease add schedules first.")
+                return
+            
+            if self.app.scheduler.start():
+                self.add_log("System STARTED", "SUCCESS")
+                self.superbar.set_running(True)
+                self.toggle_btn.setText("⏹ STOP SYSTEM")
+                self.toggle_btn.setObjectName("stop_btn")
+            else:
+                self.add_log("System START failed: No schedules available", "ERROR")
+        
         self.toggle_btn.style().unpolish(self.toggle_btn)
         self.toggle_btn.style().polish(self.toggle_btn)
         
     def add_log(self, msg, level="INFO"):
+        """Add log to console"""
         timestamp = datetime.now().strftime("%H:%M:%S")
+        
         colors = {"INFO": "#39FF14", "WARNING": "#FFA500", "ERROR": "#F85149", "SUCCESS": "#1F6FEB"}
         color = colors.get(level, "#E6EDF3")
-        self.log_console.append(f'<span style="color: #8B949E;">[{timestamp}]</span> <span style="color: {color};">[{level}]</span> {msg}')
-        scroll = self.log_console.verticalScrollBar()
-        scroll.setValue(scroll.maximum())
+        
+        # Store raw log for filtering
+        log_entry = {
+            'timestamp': timestamp,
+            'level': level,
+            'msg': msg,
+            'html': f'<span style="color: #8B949E;">[{timestamp}]</span> <span style="color: {color};">[{level}]</span> {msg}<br>'
+        }
+        
+        if not hasattr(self, '_logs'):
+            self._logs = []
+        self._logs.append(log_entry)
+        
+        # Keep only last 500 logs
+        if len(self._logs) > 500:
+            self._logs = self._logs[-500:]
+        
+        self.filter_logs()
+
+    def filter_logs(self):
+        """Filter logs based on input"""
+        filter_text = self.log_filter_input.text().lower() if hasattr(self, 'log_filter_input') else ""
+        
+        self.log_console.clear()
+        
+        for log in self._logs:
+            if filter_text:
+                if filter_text in log['msg'].lower() or filter_text in log['level'].lower():
+                    self.log_console.append(log['html'])
+            else:
+                self.log_console.append(log['html'])
+        
+        # Auto scroll to bottom
+        scrollbar = self.log_console.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
+    def clear_logs(self):
+        """Clear all logs"""
+        self._logs = []
+        self.log_console.clear()
     
     def load_profiles(self):
-        print("DEBUG: load_profiles called")
-        profiles = self.app.schedule_manager.get_all_profiles()
-        self.profile_list.clear()
-        for p in profiles:
-            item = QListWidgetItem()
-            if p.is_active:
-                item.setText(f"● {p.name}")
-                item.setForeground(QColor("#39FF14"))
-            else:
-                item.setText(p.name)
-            item.setData(Qt.ItemDataRole.UserRole, p.id)
-            self.profile_list.addItem(item)
+        """Load profiles with safety checks"""
+        # Safety check: pastikan profile_list masih ada
+        if not hasattr(self, 'profile_list') or self.profile_list is None:
+            print("ERROR: profile_list not initialized yet")
+            return
         
-        active = self.app.schedule_manager.get_active_profile()
-        if active:
-            print(f"DEBUG: Active profile found: {active.name} (id={active.id})")
-            self.superbar.update_profile(active.name)
-            self.current_profile_id = active.id
-            self.load_schedules()
-        else:
-            print("DEBUG: No active profile found")
-            self.current_profile_id = None
-            self.superbar.update_profile("None")
-            if hasattr(self, 'table_model') and self.table_model:
-                self.table_model.refresh([])
+        try:
+            profiles = self.app.schedule_manager.get_all_profiles()
+            
+            # Block signals to avoid triggering events during clear
+            self.profile_list.blockSignals(True)
+            self.profile_list.clear()
+            
+            for p in profiles:
+                item = QListWidgetItem()
+                if p.is_active:
+                    item.setText(f"● {p.name}")
+                    item.setForeground(QColor("#39FF14"))
+                else:
+                    item.setText(p.name)
+                item.setData(Qt.ItemDataRole.UserRole, p.id)
+                self.profile_list.addItem(item)
+            
+            self.profile_list.blockSignals(False)
+            
+            active = self.app.schedule_manager.get_active_profile()
+            if active:
+                self.superbar.update_profile(active.name)
+                self.current_profile_id = active.id
+                self.load_schedules()
+            else:
+                self.current_profile_id = None
+                self.superbar.update_profile("None")
+                if hasattr(self, 'table_model') and self.table_model:
+                    self.table_model.refresh([])
+                if hasattr(self, 'history_tab'):
+                    self.history_tab.load_history()
+        except Exception as e:
+            print(f"Error loading profiles: {e}")
+
+    def load_schedules(self):
+        if not self.current_profile_id:
+            # print("DEBUG: No profile selected, returning")
+            return
+        
+        # Safety check
+        if not hasattr(self, 'table'):
+            return
+        
+        try:
+            schedules = self.app.schedule_manager.get_schedules_by_profile(self.current_profile_id, include_inactive=True)
+            
+            if not hasattr(self, 'table_model') or self.table_model is None:
+                # print("DEBUG: Creating new table model")
+                self.table_model = ScheduleTableModel(schedules)
+                
+                from PyQt6.QtCore import QSortFilterProxyModel
+                self.proxy_model = QSortFilterProxyModel()
+                self.proxy_model.setSourceModel(self.table_model)
+                self.proxy_model.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+                self.table.setModel(self.proxy_model)
+                self.table.setSortingEnabled(True)
+                self.table.sortByColumn(1, Qt.SortOrder.AscendingOrder)
+            else:
+                self.table_model.refresh(schedules, self.next_bell_id)
+            
             if hasattr(self, 'history_tab'):
                 self.history_tab.load_history()
-
+        except Exception as e:
+            print(f"Error loading schedules: {e}")
+            
     def _get_schedule_from_selection(self):
         """Get schedule from current selection (handles proxy model)"""
         selected = self.table.selectedIndexes()
@@ -1030,30 +1177,6 @@ class MainWindow(QMainWindow):
             return self.table_model.schedules[row]
         return None
 
-    def load_schedules(self):
-        if not self.current_profile_id:
-            print("DEBUG: No profile selected, returning")
-            return
-        
-        schedules = self.app.schedule_manager.get_schedules_by_profile(self.current_profile_id, include_inactive=True)
-        
-        if not hasattr(self, 'table_model') or self.table_model is None:
-            print("DEBUG: Creating new table model")
-            self.table_model = ScheduleTableModel(schedules)
-            
-            from PyQt6.QtCore import QSortFilterProxyModel
-            self.proxy_model = QSortFilterProxyModel()
-            self.proxy_model.setSourceModel(self.table_model)
-            self.proxy_model.setSortCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
-            self.table.setModel(self.proxy_model)
-            self.table.setSortingEnabled(True)
-            self.table.sortByColumn(1, Qt.SortOrder.AscendingOrder)
-        else:
-            self.table_model.refresh(schedules, self.next_bell_id)
-        
-        if hasattr(self, 'history_tab'):
-            self.history_tab.load_history()
-        
     def update_next_bell_highlight(self):
         if not self.current_profile_id:
             return
@@ -1198,8 +1321,26 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Info", "Select a schedule to test")
             return
         self.app.audio_manager.play(schedule.audio_file)
+
+        active_profile = self.app.schedule_manager.get_active_profile()
+        profile_name = active_profile.name if active_profile else "Unknown"
+        
+        self.app.schedule_manager.log_bell_event(
+            schedule_name=schedule.name,
+            audio_played=schedule.audio_file or "default",
+            status="success",
+            schedule_id=schedule.id,
+            profile_name=profile_name
+        )
+        
         self.add_log(f"Test ring: {schedule.name}", "INFO")
+        self.history_tab.load_history()  # Refresh history tab
     
+    def stop_test(self):
+        """Stop current audio playback"""
+        self.app.audio_manager.stop()
+        self.add_log("Test audio stopped", "INFO")
+
     def _find_next_schedule_today(self, schedules):
         """Find next schedule today - CORRECT algorithm"""
         now = datetime.now()
@@ -1252,17 +1393,22 @@ class MainWindow(QMainWindow):
         """Update status - dipanggil hanya saat ada perubahan"""
         status = self.app.get_status()
         is_running = status['scheduler']['running']
+        
+        # Update superbar
         self.superbar.set_running(is_running)
         
+        # Update toggle button berdasarkan status sebenarnya
         if is_running:
             self.toggle_btn.setText("⏹ STOP SYSTEM")
             self.toggle_btn.setObjectName("stop_btn")
         else:
             self.toggle_btn.setText("▶ START SYSTEM")
             self.toggle_btn.setObjectName("start_btn")
+        
         self.toggle_btn.style().unpolish(self.toggle_btn)
         self.toggle_btn.style().polish(self.toggle_btn)
-
+        
+        # Update next bell display
         self._update_next_bell_display()
     
     def _update_next_bell_only(self):
@@ -1296,16 +1442,19 @@ class MainWindow(QMainWindow):
                 self.table_model.refresh(self.table_model.schedules, self.next_bell_id)
                 
     def start_timers(self):
+        # Hanya clock timer
         self.clock_timer = QTimer()
         self.clock_timer.timeout.connect(self.superbar.update_time)
         self.clock_timer.start(1000)
-
-        self.next_bell_timer = QTimer()
-        self.next_bell_timer.timeout.connect(self._update_next_bell_display)
-        self.next_bell_timer.start(1000)
         
+        # Status update timer (setiap 2 detik)
+        self.status_timer = QTimer()
+        self.status_timer.timeout.connect(self.update_system_status)
+        self.status_timer.start(2000)
+        
+        # Initial update
         self.superbar.update_time()
-        self._update_next_bell_display()
+        self.update_system_status()
     
     def _update_status_only(self):
         """Update status tanpa menyentuh selection tabel"""

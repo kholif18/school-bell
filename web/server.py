@@ -215,12 +215,13 @@ def list_audio():
 # Control
 @app.route('/api/control/start', methods=['POST'])
 def start_system():
-    if bell_app and not bell_app.scheduler.running:
-        bell_app.scheduler.start()
-        event_manager.emit('system_started')
-        socketio.emit('system_status', {'running': True})
-        return jsonify({'success': True, 'message': 'System started'})
-    return jsonify({'success': False, 'message': 'System already running'})
+    if bell_app:
+        if bell_app.scheduler.start():
+            event_manager.emit('system_started')
+            socketio.emit('system_status', {'running': True})
+            return jsonify({'success': True, 'message': 'System started'})
+        return jsonify({'success': False, 'message': 'Cannot start. No active profile or no schedules.'})
+    return jsonify({'success': False, 'message': 'App not initialized'})
 
 @app.route('/api/control/stop', methods=['POST'])
 def stop_system():
