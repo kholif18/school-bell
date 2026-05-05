@@ -1,5 +1,5 @@
 # web/server.py
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 from core.app_core import get_app
 from core.schedule_manager import get_schedule_manager
@@ -10,6 +10,9 @@ import uuid
 import os
 
 app = Flask(__name__)
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory('static', filename)
 app.config['SECRET_KEY'] = 'school-bell-secret'
 socketio = SocketIO(app, cors_allowed_origins="*", logger=False, engineio_logger=False)
 

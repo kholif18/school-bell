@@ -7,7 +7,6 @@ from PyQt6.QtGui import *
 from core.event_manager import get_event_manager
 
 from core.app_core import get_app
-
 # ============================================================
 # INDUSTRIAL DARK THEME
 # ============================================================
@@ -787,6 +786,16 @@ class MainWindow(QMainWindow):
 
     def setup_ui(self):
         self.setWindowTitle("SCHOOL BELL AUTOMATION")
+
+        from PyQt6.QtGui import QIcon
+        from pathlib import Path
+        
+        icon_path = Path("assets/icon/schoolbell.png")
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
+        else:
+            print(f"Warning: Icon not found at {icon_path}")
+            
         self.setMinimumSize(1000, 600)
         self.resize(1200, 750)
         self.setStyleSheet(INDUSTRIAL_STYLE)
@@ -985,12 +994,51 @@ class MainWindow(QMainWindow):
         self.add_log("System stopped via remote", "WARNING")
         self.update_system_status()
     
+    def closeEvent(self, event):
+        """Handle window close - minimize to tray instead of quit if in tray mode"""
+        # Cek apakah dijalankan dalam tray mode
+        if '--tray' in sys.argv:
+            # Tray mode: hide window instead of closing
+            event.ignore()
+            self.hide()
+            self.add_log("Application minimized to tray", "INFO")
+            
+            # Tampilkan notifikasi tray
+            if hasattr(self, 'tray_icon') and self.tray_icon:
+                self.tray_icon.show_notification(
+                    "School Bell", 
+                    "Application minimized to system tray",
+                    QSystemTrayIcon.MessageIcon.Information
+                )
+        else:
+            # Normal mode: confirm exit
+            reply = QMessageBox.question(
+                self, 
+                "Exit", 
+                "Stop scheduler and exit?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                try:
+                    self.app.shutdown_all()
+                except Exception as e:
+                    QMessageBox.critical(self, "Shutdown Error", f"Error during shutdown:\n{str(e)}")
+                event.accept()
+            else:
+                event.ignore()
+                
     def on_schedules_reloaded(self):
         """Called when schedules are reloaded"""
         self.add_log("Schedules reloaded", "INFO")
         self.load_schedules()
         self.update_next_bell_highlight()
 
+    def show_from_tray(self):
+        """Show window when called from tray (restore from minimization)"""
+        self.show()
+        self.raise_()
+        self.activateWindow()
+        
     def on_profiles_updated(self):
         """Called when profiles change (add/delete)"""
         self.add_log("Profiles updated", "INFO")
@@ -1499,22 +1547,6 @@ class MainWindow(QMainWindow):
                 self.next_bell_id = None
                 if hasattr(self, 'table_model'):
                     self.table_model.next_bell_id = None
-        
-    def closeEvent(self, event):
-        reply = QMessageBox.question(
-            self, 
-            "Exit", 
-            "Stop scheduler and exit?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        if reply == QMessageBox.StandardButton.Yes:
-            try:
-                self.app.shutdown_all()  # Use shutdown_all instead of just stop()
-            except Exception as e:
-                QMessageBox.critical(self, "Shutdown Error", f"Error during shutdown:\n{str(e)}")
-            event.accept()
-        else:
-            event.ignore()
 
 # ============================================================
 # RUN

@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Bell Automatic</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
@@ -39,6 +41,19 @@
         .header h1 span {
             color: #E6EDF3;
             font-size: 0.7em;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .logo img {
+            height: 40px;
+            width: auto;
+        }
+        .logo h1 {
+            margin: 0;
         }
 
         .status-badge {
@@ -441,7 +456,10 @@
 </head>
 <body>
     <div class="header">
-        <h1>🔔 SCHOOL BELL <span>Control Center</span></h1>
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="School Bell Logo">
+            <h1>SCHOOL BELL <span>Control Center</span></h1>
+        </div>
         <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
             <div class="volume-control">
                 <span>🔊</span>
