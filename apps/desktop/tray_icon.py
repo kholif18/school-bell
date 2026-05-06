@@ -138,7 +138,7 @@ class TrayIcon(QSystemTrayIcon):
         self.refresh_state()
 
     def on_bell(self, payload):
-        schedule_name = payload["schedule"].name if "schedule" in payload else "Bell"
+        schedule_name = payload["schedule"]["name"] if "schedule" in payload else "Bell"
 
         self.showMessage(
             "🔔 Bell Triggered",

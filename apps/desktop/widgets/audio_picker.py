@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 import os
-
+from core.paths import get_paths
 
 class AudioPicker(QWidget):
 
@@ -31,10 +31,11 @@ class AudioPicker(QWidget):
         self.test_btn.clicked.connect(self.test_audio)
 
     def pick_file(self):
+        paths = get_paths()
         file, _ = QFileDialog.getOpenFileName(
             self,
             "Select Audio",
-            "",
+            str(paths.audio_dir),
             "Audio Files (*.mp3 *.wav)"
         )
 

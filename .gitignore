@@ -16,6 +16,7 @@ logs/
 .idea/
 .vscode/
 .DS_Store
+config.json
 
 assets/audio/*.mp3
 assets/audio/*.wav

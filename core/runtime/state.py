@@ -17,6 +17,7 @@ class AppState:
     active_jobs: int = 0
     next_bell: Optional[datetime] = None
     next_bell_name: Optional[str] = None
+    next_bell_id: Optional[int] = None 
 
     last_started: Optional[datetime] = None
     last_stopped: Optional[datetime] = None
@@ -76,9 +77,11 @@ class StateManager:
         if payload is None:
             self._state.next_bell = None
             self._state.next_bell_name = None
+            self._state.next_bell_id = None
         else:
             self._state.next_bell = payload.get("time")
             self._state.next_bell_name = payload.get("name")
+            self._state.next_bell_id = payload.get("id")
 
         self._state.updated_at = datetime.now()
 
@@ -95,6 +98,7 @@ class StateManager:
             "active_jobs": s.active_jobs,
             "next_bell": s.next_bell,
             "next_bell_name": s.next_bell_name,
+            "next_bell_id": s.next_bell_id,
             "last_started": s.last_started,
             "last_stopped": s.last_stopped,
             "updated_at": s.updated_at,

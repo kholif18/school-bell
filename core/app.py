@@ -1,6 +1,6 @@
 # core/app.py
 import logging
-from datetime import datetime
+# from datetime import datetime
 
 from core.config import get_config
 from core.database import get_db_manager
@@ -12,6 +12,7 @@ from core.services.scheduler import get_scheduler_service
 from core.runtime.events import get_event_bus
 from core.runtime.state import get_state_manager
 from core.services.autostart_service import AutoStartService
+from core.theme_manager import ThemeManager
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +41,15 @@ class CoreApp:
 
         self.config.on_change(self._on_config_change)
         self.autostart_service = AutoStartService()
+        self.theme = ThemeManager()
         
         self._wire_events()
+        self._init_theme()
 
+    def _init_theme(self):
+        saved = self.config.get("theme", "dark")
+        self.theme.current_theme = saved
+        
     # =========================================================
     # Config
     # =========================================================
@@ -88,27 +95,20 @@ class CoreApp:
 
     def _handle_bell_trigger(self, payload):
         try:
-            schedule = payload["schedule"]
-            profile_name = payload["profile"]
+            logger.info(f"Bell Triggered -> {payload['name']}")
 
-            logger.info(f"Bell Triggered -> {schedule.name}")
+            self.audio.play(payload["audio"])
 
-            # play audio
-            self.audio.play(schedule.audio_file)
-
-            # history log
             self.repo.log_bell_event(
-                schedule_id=schedule.id,
-                schedule_name=schedule.name,
-                audio_played=schedule.audio_file,
+                schedule_id=payload["id"],
+                schedule_name=payload["name"],
+                audio_played=payload["audio"],
                 status="SUCCESS",
-                profile_name=profile_name
+                profile_name=payload["profile"]
             )
 
-            self.events.emit("BELL_UI", {
-                "schedule": schedule,
-                "profile": profile_name
-            })
+            # QTimer.singleShot(0, lambda: self.events.emit("BELL_UI", payload))
+            self.events.emit("BELL_UI", payload)
 
         except Exception as e:
             logger.error(f"BELL_TRIGGERED handler error: {e}")

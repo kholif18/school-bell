@@ -2,6 +2,7 @@
 
 import logging
 import threading
+from PyQt6.QtCore import QTimer
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -55,15 +56,15 @@ class SchedulerService:
 
         now = datetime.now()
 
-        logger.info(f"🔔 {schedule.name} @ {now.strftime('%H:%M:%S')}")
-
-        # ONLY EVENT EMIT (NO DIRECT DEPENDENCY)
-        self.events.emit("BELL_TRIGGERED", {
-            "schedule": schedule,
+        data = {
+            "id": schedule.id,
+            "name": schedule.name,
+            "audio": schedule.audio_file,
             "profile": profile_name,
-            "time": now,
-        })
+            "time": now.isoformat(),
+        }
 
+        self.events.emit("BELL_TRIGGERED", data)
         self._publish_next_bell()
 
     def _publish_next_bell(self):
@@ -88,10 +89,18 @@ class SchedulerService:
         if nearest_job is None:
             self.events.emit("NEXT_BELL_UPDATED", None)
             return
+        
+        schedule_id = None
+        if nearest_job.id and nearest_job.id.startswith("bell_"):
+            try:
+                schedule_id = int(nearest_job.id.replace("bell_", ""))
+            except:
+                schedule_id = None
 
         self.events.emit("NEXT_BELL_UPDATED", {
-            "time": nearest_time,
-            "name": nearest_job.name
+            "time": nearest_time.isoformat() if nearest_time else None,
+            "name": nearest_job.name,
+            "id": schedule_id
         })
         
     # =========================

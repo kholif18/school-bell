@@ -3,7 +3,7 @@ import sys
 import os
 from pathlib import Path
 from PyQt6.QtWidgets import *
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import *
 from apps.desktop.widgets.audio_picker import AudioPicker
 
 class SettingsTab(QWidget):
@@ -11,6 +11,7 @@ class SettingsTab(QWidget):
     def __init__(self, app_core):
         super().__init__()
         self.app = app_core
+        self.theme = self.app.theme
         self._build()
 
     def _build(self):
@@ -44,6 +45,22 @@ class SettingsTab(QWidget):
         form.addWidget(audio_box)
 
         # =========================
+        # 🎨 THEME
+        # =========================
+        theme_box = QGroupBox("🎨 Appearance")
+        theme_layout = QVBoxLayout(theme_box)
+
+        self.theme_label = QLabel(f"Current Theme: {self.theme.current_theme}")
+
+        self.theme_toggle = QPushButton("Switch Theme (Dark / Light)")
+        self.theme_toggle.setObjectName("systemButton")
+
+        theme_layout.addWidget(self.theme_label)
+        theme_layout.addWidget(self.theme_toggle)
+
+        form.addWidget(theme_box)
+
+        # =========================
         # ⚙️ SYSTEM
         # =========================
         system_box = QGroupBox("⚙️ System")
@@ -71,10 +88,26 @@ class SettingsTab(QWidget):
         if saved:
             self.manual_audio.set_value(saved)
 
+        # =========================
+        # MANUAL BELL CONTROLS
+        # =========================
+        btn_row = QHBoxLayout()
+
         self.manual_bell_btn = QPushButton("🔔 Play Manual Bell")
-        system_layout.addWidget(self.manual_bell_btn)
+        self.stop_bell_btn = QPushButton("⏹ Stop Bell")
+
+        self.stop_bell_btn.setObjectName("dangerButton")
+
+        btn_row.addWidget(self.manual_bell_btn)
+        btn_row.addWidget(self.stop_bell_btn)
+
+        system_layout.addLayout(btn_row)
 
         form.addWidget(system_box)
+
+        # =========================
+        # SAVE BUTTON
+        # =========================
 
         self.save_btn = QPushButton("💾 Save Settings")
         form.addWidget(self.save_btn)
@@ -91,11 +124,24 @@ class SettingsTab(QWidget):
         self.volume_slider.valueChanged.connect(self.on_volume_change)
         self.test_btn.clicked.connect(self.test_audio)
         self.manual_bell_btn.clicked.connect(self.manual_bell)
+        self.stop_bell_btn.clicked.connect(self.stop_bell)
+        self.theme_toggle.clicked.connect(self.toggle_theme)
+
+        saved = self.app.config.get("theme", "dark")
+        self.theme.current_theme = saved
+        self.theme_label.setText(f"Current Theme: {saved}")
 
     # =========================
     # ACTIONS
     # =========================
+    def toggle_theme(self):
+        new_theme = self.app.theme.toggle()
+        print("THEME:", new_theme)
 
+        self.app.config.set("theme", new_theme)
+
+        self.theme_label.setText(f"Current Theme: {new_theme}")
+        
     def test_audio(self):
         self.app.test_audio()
 
@@ -107,6 +153,9 @@ class SettingsTab(QWidget):
         else:
             self.app.test_audio()
             
+    def stop_bell(self):
+        self.app.audio.stop()
+
     def on_autostart_change(self, state):
         enabled = state == Qt.CheckState.Checked.value
 

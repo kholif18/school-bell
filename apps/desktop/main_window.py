@@ -9,279 +9,11 @@ from apps.desktop.controllers.main_controller import MainController
 from core.paths import get_paths
 from PyQt6.QtGui import QIcon
 
+from core.styles.loader import load_stylesheet
+from core.paths import get_paths
+
 paths = get_paths()
 icon_path = paths.icon_dir / "schoolbell.png"
-
-INDUSTRIAL_STYLE = """
-/* =========================================================
-   GLOBAL
-========================================================= */
-QMainWindow, QWidget {
-    background-color: #15161a;
-    color: #e7e7e7;
-    font-family: Segoe UI;
-    font-size: 12px;
-}
-
-/* =========================================================
-   SUPERBAR
-========================================================= */
-QFrame#superbar {
-    background-color: #101115;
-    border: 1px solid #2a2d35;
-    border-radius: 8px;
-}
-
-/* =========================================================
-   PANELS
-========================================================= */
-QFrame#sidepanel, 
-QFrame#mainpanel {
-    background-color: #191b20;
-    border: 1px solid #2f323c;
-    border-radius: 8px;
-}
-
-/* =========================================================
-   SECTION TITLE
-========================================================= */
-QLabel#sectionTitle {
-    font-size: 11px;
-    font-weight: 600;
-    color: #8f96a3;
-    padding: 2px 0 6px 2px;
-    letter-spacing: 1px;
-}
-
-/* =========================================================
-   LABEL
-========================================================= */
-QLabel {
-    background: transparent;
-}
-
-/* =========================================================
-   BUTTON
-========================================================= */
-QPushButton {
-    background-color: #2b2e36;
-    border: 1px solid #3d414c;
-    border-radius: 5px;
-    padding: 9px 14px;
-    color: #e9e9e9;
-    min-height: 16px;
-}
-
-QPushButton:hover {
-    background-color: #353944;
-    border: 1px solid #4a5060;
-}
-
-QPushButton:pressed {
-    background-color: #202229;
-}
-
-QPushButton:disabled {
-    background-color: #24262d;
-    color: #666;
-    border: 1px solid #2d3038;
-}
-
-/* =========================================================
-   LIST WIDGET
-========================================================= */
-QListWidget {
-    background-color: #20232b;
-    border: 1px solid #323642;
-    border-radius: 6px;
-    padding: 8px;
-    outline: none;
-}
-
-QListWidget::item {
-    padding: 8px;
-    margin-bottom: 3px;
-    border-radius: 4px;
-}
-
-QListWidget::item:hover {
-    background: #2b3040;
-}
-
-QListWidget::item:selected {
-    background: #1e8e3e;
-    color: white;
-}
-
-/* =========================================================
-   TAB WIDGET
-========================================================= */
-QTabWidget::pane {
-    border: 1px solid #30343e;
-    background: #17191f;
-    border-radius: 6px;
-    margin-top: 4px;
-}
-
-QTabBar::tab {
-    background: #262932;
-    border: 1px solid #3a3e49;
-    padding: 8px 18px;
-    margin-right: 3px;
-    border-top-left-radius: 4px;
-    border-top-right-radius: 4px;
-}
-
-QTabBar::tab:selected {
-    background: #343946;
-    border-bottom: 1px solid #343946;
-}
-
-QTabBar::tab:hover {
-    background: #303542;
-}
-
-/* =========================================================
-   TABLE VIEW
-========================================================= */
-QTableView {
-    background-color: #20232b;
-    border: 1px solid #323642;
-    border-radius: 6px;
-    padding: 4px;
-    color: #eaeaea;
-    gridline-color: #2f3340;
-    selection-background-color: #4d5eff;
-    alternate-background-color: #242833;
-}
-
-QHeaderView::section {
-    background-color: #2a2e38;
-    color: #dcdcdc;
-    border: 1px solid #3a3f4b;
-    padding: 6px;
-    height: 28px;
-    font-weight: bold;
-}
-
-QTableCornerButton::section {
-    background-color: #2a2e38;
-    border: 1px solid #3a3f4b;
-}
-
-QTableView::item:selected {
-    background: #4d5eff;
-    color: white;
-}
-
-/* =========================================================
-   INPUTS
-========================================================= */
-QLineEdit,
-QTimeEdit,
-QComboBox,
-QTextEdit {
-    background-color: #20232b;
-    border: 1px solid #323642;
-    border-radius: 5px;
-    padding: 6px;
-    color: #f1f1f1;
-}
-
-QComboBox::drop-down {
-    border: none;
-}
-
-/* =========================================================
-   SCROLLBAR
-========================================================= */
-QScrollBar:vertical {
-    background: #17191f;
-    width: 10px;
-    margin: 0;
-}
-
-QScrollBar::handle:vertical {
-    background: #404552;
-    min-height: 25px;
-    border-radius: 4px;
-}
-
-QScrollBar::handle:vertical:hover {
-    background: #525868;
-}
-
-QScrollBar::add-line:vertical,
-QScrollBar::sub-line:vertical {
-    height: 0;
-}
-
-QScrollBar:horizontal {
-    background: #17191f;
-    height: 10px;
-}
-
-QScrollBar::handle:horizontal {
-    background: #404552;
-    min-width: 25px;
-    border-radius: 4px;
-}
-
-QScrollBar::add-line:horizontal,
-QScrollBar::sub-line:horizontal {
-    width: 0;
-}
-
-/* ================= SYSTEM BUTTON ================= */
-
-QPushButton#systemButton[running="false"] {
-    background-color: #1f7a35;
-    border: 1px solid #2ca24a;
-    color: white;
-    font-weight: bold;
-}
-
-QPushButton#systemButton[running="false"]:hover {
-    background-color: #259140;
-}
-
-QPushButton#systemButton[running="true"] {
-    background-color: #8a1f1f;
-    border: 1px solid #b52a2a;
-    color: white;
-    font-weight: bold;
-}
-
-QPushButton#systemButton[running="true"]:hover {
-    background-color: #a22626;
-}
-
-/* ================= DANGER BUTTON ================= */
-
-QPushButton#dangerButton {
-    background-color: #7b2020;
-    border: 1px solid #9d2c2c;
-    color: white;
-    font-weight: bold;
-}
-
-QPushButton#dangerButton:hover {
-    background-color: #922626;
-}
-
-/* ================= SUCCESS BUTTON ================= */
-
-QPushButton#successButton {
-    background-color: #1f7a35;
-    border: 1px solid #2ca24a;
-    color: white;
-    font-weight: bold;
-}
-
-QPushButton#successButton:hover {
-    background-color: #259140;
-}
-"""
 
 class MainWindow(QMainWindow):
 
@@ -318,20 +50,23 @@ class MainWindow(QMainWindow):
         footer = QLabel("SCHOOL BELL AUTOMATION | V1.0 - Ravaa Creative")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        # styling biar soft (tidak putih mencolok)
-        footer.setStyleSheet("""
-            color: #8f96a3;
-            font-size: 11px;
-            padding: 4px;
-        """)
-
         self.status_bar.addPermanentWidget(footer, 1)
 
     def _set_window(self):
         self.setWindowTitle("SCHOOL BELL AUTOMATION")
         self.resize(1200, 750)
         self.setMinimumSize(1000, 600)
-        self.setStyleSheet(INDUSTRIAL_STYLE)
+
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        paths = get_paths()
+        # style_path = paths.base_dir / "apps/desktop/styles/main_dark.qss"
+        # style_path = paths.base_dir / "apps/desktop/styles/main_light.qss"
+
+        saved_theme = self.app.config.get("theme", "dark")
+        if not hasattr(self, "_theme_loaded"):
+            self.app.theme.apply(saved_theme)
+            self._theme_loaded = True
 
     def _create_root(self):
         self.central = QWidget()
@@ -388,6 +123,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.add_profile_btn)
         layout.addWidget(self.activate_profile_btn)
         layout.addWidget(self.delete_profile_btn)
+
         layout.addStretch()
 
         parent.addWidget(panel)
@@ -431,6 +167,12 @@ class MainWindow(QMainWindow):
         self.table.setMouseTracking(True)
         self.table.setSortingEnabled(True)
 
+        # Tambahkan rounded corner untuk table
+        self.table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        
+        # Set row height lebih besar
+        self.table.verticalHeader().setDefaultSectionSize(35)
+
         layout.addWidget(self.table)
 
         # ================= BUTTON BAR =================
@@ -441,7 +183,7 @@ class MainWindow(QMainWindow):
         self.edit_btn = QPushButton("✏️ Edit")
         self.delete_btn = QPushButton("🗑 Delete")
         self.ring_btn = QPushButton("🔊 Test")
-        self.stop_test_btn = QPushButton("⏹ Stop Sound")
+        self.stop_test_btn = QPushButton("⏹ Stop Bell")
         self.toggle_btn = QPushButton("▶ START SYSTEM")
         self.stop_test_btn.setObjectName("dangerButton")
         self.toggle_btn.setObjectName("systemButton")
@@ -463,6 +205,9 @@ class MainWindow(QMainWindow):
 
         self.toggle_btn.setMinimumHeight(34)
         self.reload_btn.setMinimumHeight(34)
+
+        self.ring_btn.setEnabled(False)
+        QTimer.singleShot(0, self._bind_table_selection)
 
         bar.addWidget(self.toggle_btn)
         bar.addWidget(self.reload_btn)
@@ -500,6 +245,58 @@ class MainWindow(QMainWindow):
         self.settings_tab = SettingsTab(self.app)
         self.tabs.addTab(self.settings_tab, "⚙ Settings")
 
+    def _bind_table_selection(self):
+        def bind():
+            model = self.table.selectionModel()
+            if not model:
+                QTimer.singleShot(100, bind)
+                return
+
+            try:
+                model.selectionChanged.disconnect()
+            except:
+                pass
+
+            model.selectionChanged.connect(self._on_selection_change)
+
+        bind()
+            
+    # =====================================================
+    # HELPER
+    # =====================================================
+
+    def _get_selected_schedule(self):
+        try:
+            indexes = self.table.selectionModel().selectedRows()
+            if not indexes:
+                return None
+
+            row = indexes[0].row()
+
+            return self.controller.get_schedule_by_row(row)
+
+        except Exception as e:
+            print("Selection error:", e)
+            return None
+    
+    def _on_test_clicked(self):
+        schedule = self.controller._get_selected_schedule()
+
+        if not schedule:
+            QMessageBox.warning(self, "No Selection", "Pilih schedule dulu")
+            return
+
+        self.controller.test_ring(schedule.id)
+
+    def _on_selection_change(self):
+        model = self.table.selectionModel()
+        if not model:
+            self.ring_btn.setEnabled(False)
+            return
+
+        has_selection = len(model.selectedRows()) > 0
+        self.ring_btn.setEnabled(has_selection)
+        
     # =====================================================
     # SIGNALS
     # =====================================================
@@ -509,13 +306,14 @@ class MainWindow(QMainWindow):
 
         self.add_profile_btn.clicked.connect(c.add_profile)
         self.activate_profile_btn.clicked.connect(c.activate_profile)
+        self.profile_list.itemDoubleClicked.connect(c.rename_profile)
         self.delete_profile_btn.clicked.connect(c.delete_profile)
         self.profile_list.itemClicked.connect(c.on_profile_click)
 
         self.add_btn.clicked.connect(c.add_schedule)
         self.edit_btn.clicked.connect(c.edit_schedule)
         self.delete_btn.clicked.connect(c.delete_schedule)
-        self.ring_btn.clicked.connect(c.test_ring)
+        self.ring_btn.clicked.connect(self._on_test_clicked)
         self.stop_test_btn.clicked.connect(c.stop_test)
         self.toggle_btn.clicked.connect(c.toggle_system)
         self.reload_btn.clicked.connect(c.load_schedules)
@@ -526,14 +324,25 @@ class MainWindow(QMainWindow):
         self.log_filter_input.textChanged.connect(c._filter_logs)
 
         # CORE EVENT BUS
-        self.app.events.on("JOBS_UPDATED", lambda _: c.load_schedules())
+        self.app.events.on("JOBS_UPDATED", lambda _: self._safe_reload(c))
         self.app.events.on("SYSTEM_STARTED", lambda _: c.update_system_status())
         self.app.events.on("SYSTEM_STOPPED", lambda _: c.update_system_status())
         self.app.events.on("PROFILE_CHANGED", lambda _: c.load_profiles())
-        self.app.events.on("BELL_TRIGGERED", lambda _: self.history_tab.refresh())
+        self.app.events.on("BELL_TRIGGERED", self._on_bell_triggered)
 
         # SUPERBAR HEARTBEAT
         self.superbar.tick.connect(c._update_next_bell_display)
+
+    def _on_bell_triggered(self, data):
+        QTimer.singleShot(0, lambda: self._handle_bell(data))
+        self._handle_bell(data)
+    
+    def _handle_bell(self, data):
+        print("BELL UI:", data)
+        self.superbar.set_running(True)
+
+    def _safe_reload(self, controller):
+        QTimer.singleShot(0, controller.load_schedules)
 
     # =====================================================
     # CLOSE

@@ -1,22 +1,25 @@
 # apps/desktop/controllers/main_controller.py
 
 from PyQt6.QtWidgets import QMessageBox, QInputDialog, QListWidgetItem, QHeaderView
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor
 from datetime import datetime, time
 
 from apps.desktop.dialogs.schedule_dialog import ScheduleDialog
 from apps.desktop.bridge.client_bridge import ClientBridge
-
+from core.styles.loader import load_stylesheet
+from core.paths import get_paths
 
 class MainController:
 
     def __init__(self, view, app_core):
         self.view = view
         self.bridge = ClientBridge(app_core)
+        self.app = app_core
 
         self.current_profile_id = None
         self._logs = []
+        self.dark_mode = True
 
     # =====================================================
     # INIT
@@ -112,12 +115,14 @@ class MainController:
 
         schedules = self.bridge.get_schedules(self.current_profile_id)
 
-        if not hasattr(self.view, "table_model"):
-            self._init_table_model(schedules)
-        else:
-            self.view.table_model.refresh(schedules)
+        QTimer.singleShot(0, lambda: self._safe_set_model(schedules))
+
+    def _safe_set_model(self, schedules):
+        self._init_table_model(schedules)
+        self._update_next_bell_display()
 
     def _init_table_model(self, schedules):
+        self.view.table.blockSignals(True)
         from apps.desktop.models.schedule_table_model import ScheduleTableModel
         from PyQt6.QtCore import QSortFilterProxyModel
 
@@ -134,14 +139,24 @@ class MainController:
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)  # Status
         self.view.table.setSortingEnabled(True)
         self.view.table.sortByColumn(1, Qt.SortOrder.AscendingOrder)
+        self.view.table.blockSignals(False)
 
     def _get_selected_schedule(self):
-        indexes = self.view.table.selectedIndexes()
+        indexes = self.view.table.selectionModel().selectedRows()
         if not indexes:
             return None
 
-        source = self.view.proxy_model.mapToSource(indexes[0])
-        return self.view.table_model.schedules[source.row()]
+        proxy_index = indexes[0]
+        if not proxy_index.isValid():
+            return None
+
+        source_index = self.view.proxy_model.mapToSource(proxy_index)
+
+        row = source_index.row()
+        if row < 0 or row >= len(self.view.table_model.schedules):
+            return None
+
+        return self.view.table_model.schedules[row]
 
     def add_schedule(self):
         if not self.current_profile_id:
@@ -193,16 +208,51 @@ class MainController:
         if not schedule:
             return
 
-        if QMessageBox.question(self.view, "Delete", f"Delete {schedule.name}?") == QMessageBox.StandardButton.Yes:
+        if QMessageBox.question(self.view, "Delete", f"Delete {schedule["name"]}?") == QMessageBox.StandardButton.Yes:
             self.bridge.delete_schedule(schedule.id)
             self.load_schedules()
             self._update_next_bell_display()
-            self.add_log(f"Schedule {schedule.name} deleted")
+            self.add_log(f"Schedule {schedule["name"]} deleted")
+
+    # =====================================================
+    # THEME
+    # =====================================================
+    def toggle_theme(self):
+        """Toggle theme and update all components"""
+        new_theme = self.app.theme.toggle()
+        self.app.config.set("theme", new_theme)
+        
+        # Update table model colors (CRITICAL!)
+        if hasattr(self.view, "table_model"):
+            self.view.table_model.set_theme(new_theme)
+        
+        # Update status indicator jika perlu
+        self.update_system_status()
+        
+    # def toggle_theme(self):
+    #     self.app.theme.toggle(self.view)
 
     # =====================================================
     # SYSTEM
     # =====================================================
+    def rename_profile(self, item):
+        if not item:
+            return
 
+        profile_id = item.data(Qt.ItemDataRole.UserRole)
+        old_name = item.text().replace("● ", "")
+
+        name, ok = QInputDialog.getText(
+            self.view,
+            "Rename Profile",
+            "New name:",
+            text=old_name
+        )
+
+        if ok and name and name.strip():
+            self.bridge.update_profile(profile_id, name=name.strip())
+            self.load_profiles()
+        
     def toggle_system(self):
         if self.bridge.is_running():
             self.bridge.stop_system()
@@ -234,11 +284,16 @@ class MainController:
     # AUDIO TEST
     # =====================================================
 
-    def test_ring(self):
-        schedule = self._get_selected_schedule()
-        file = schedule.audio_file if schedule else None
+    def test_ring(self, schedule_id=None):
+        schedule = self.bridge.get_schedule(schedule_id)
+
+        print("DEBUG schedule:", schedule)
+
+        if not schedule:
+            return
+
+        file = schedule.audio_file
         self.bridge.test_ring(file)
-        self.add_log("Test bell ringing")
 
     def stop_test(self):
         self.bridge.stop_ring()
@@ -250,10 +305,14 @@ class MainController:
 
     def _update_next_bell_display(self):
         state = self.bridge.get_state()
+
         self.view.superbar.update_next_bell(
             state["next_bell"],
             state.get("next_bell_name")
         )
+
+        if hasattr(self.view, "table_model"):
+            self.view.table_model.update_next_bell(state.get("next_bell_id"))
 
     # =====================================================
     # LOG

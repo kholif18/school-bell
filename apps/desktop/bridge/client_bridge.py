@@ -74,7 +74,7 @@ class ClientBridge:
         result = self.core.repo.delete_schedule(schedule_id)
         self.reload_jobs()
         return result
-
+    
     # =====================================================
     # SYSTEM CONTROL
     # =====================================================
@@ -115,6 +115,8 @@ class ClientBridge:
     def events(self):
         return self.core.events
 
+    def update_profile(self, profile_id, **kwargs):
+        return self.core.repo.update_profile(profile_id, **kwargs)
     # =====================================================
     # APP CLOSE
     # =====================================================

@@ -53,6 +53,21 @@ class ScheduleRepository:
         finally:
             session.close()
 
+    def update_profile(self, profile_id, **kwargs):
+        session = self._session()
+        try:
+            profile = session.query(ScheduleProfile).get(profile_id)
+            if not profile:
+                return False
+
+            for k, v in kwargs.items():
+                setattr(profile, k, v)
+
+            session.commit()
+            return True
+        finally:
+            session.close()
+
     def get_profiles(self) -> List[ScheduleProfile]:
         session = self._session()
         try:

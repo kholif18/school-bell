@@ -1,4 +1,3 @@
-# apps/desktop/main.py
 import sys
 from PyQt6.QtWidgets import QApplication
 
@@ -15,11 +14,14 @@ def run():
 
     window = MainWindow(backend)
 
+    backend.desktop_window = window
+
     tray = TrayIcon(qt, window, backend)
 
     window.show()
 
     sys.exit(qt.exec())
+
 
 if __name__ == "__main__":
     run()
