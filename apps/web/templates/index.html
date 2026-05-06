@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Bell Automation Dashboard</title>
+     <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icon/favicon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icon/favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon/logo.png') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                    <div class="logo-icon">
+                        <img src="{{ url_for('static', filename='icon/logo.png') }}" alt="Logo" class="logo-img">
+                    </div>
+                <div class="logo-text">
+                    <h2>School Bell</h2>
+                    <span>Automation System</span>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-page="dashboard">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item" data-page="schedules">
+                    <span class="nav-icon">📅</span>
+                    <span>Jadwal</span>
+                </a>
+                <a href="#" class="nav-item" data-page="profiles">
+                    <span class="nav-icon">👥</span>
+                    <span>Profiles</span>
+                </a>
+                <a href="#" class="nav-item" data-page="history">
+                    <span class="nav-icon">📜</span>
+                    <span>History</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Settings</span>
+                </a>
+            </nav>
+            
+            <div class="system-status">
+                <div class="status-indicator" id="systemStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Loading...</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-title">
+                    <h1 id="pageTitle">Dashboard</h1>
+                    <p id="pageSubtitle">Overview sistem sekolah</p>
+                </div>
+                <div class="header-actions">
+                    <div class="datetime" id="datetime">
+                        <span class="time" id="currentTime">--:--:--</span>
+                        <span class="date" id="currentDate">-- --- ----</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard Page -->
+            <div id="dashboardPage" class="page active">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">⏰</div>
+                        <div class="stat-info">
+                            <h3 id="totalSchedules">0</h3>
+                            <p>Total Jadwal</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-info">
+                            <h3 id="activeSchedules">0</h3>
+                            <p>Jadwal Aktif</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-info">
+                            <h3 id="activeProfile">-</h3>
+                            <p>Profile Aktif</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🔔</div>
+                        <div class="stat-info">
+                            <h3 id="nextBellTime">--:--</h3>
+                            <p>Next Bell</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Control Panel -->
+                <div class="control-panel">
+                    <h3>System Control</h3>
+                    <div class="control-buttons">
+                        <button class="btn btn-success btn-large" id="startBtn" onclick="systemControl.start()">
+                            <span>▶</span> Start System
+                        </button>
+                        <button class="btn btn-danger btn-large" id="stopBtn" onclick="systemControl.stop()">
+                            <span>⏹</span> Stop System
+                        </button>
+                        <button class="btn btn-primary" onclick="systemControl.testBell()">
+                            <span>🔊</span> Test Bell
+                        </button>
+                        <button class="btn btn-secondary" onclick="systemControl.reload()">
+                            <span>⟳</span> Reload
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Next Bell Info -->
+                <div class="next-bell-card">
+                    <h3>🔔 Next Schedule</h3>
+                    <div class="next-bell-info">
+                        <div class="bell-time-large" id="nextBellLarge">--:--</div>
+                        <div class="bell-name" id="nextBellName">No schedule</div>
+                        <div class="bell-countdown" id="countdown">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Schedules Page (Placeholder) -->
+            <div id="schedulesPage" class="page">
+                <div class="card">
+                    <!-- Di Schedules Page -->
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>Jadwal Bel</h3>
+                        <button class="btn btn-primary" onclick="ModalManager.showScheduleDialog()">
+                            + Add Schedule
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="schedulesTable">
+                            <thead>
+                                <tr>
+                                    <th>Nama</th>
+                                    <th>Jam</th>
+                                    <th>Hari</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="schedulesBody">
+                                <tr><td colspan="4" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profiles Page -->
+            <div id="profilesPage" class="page">
+                <div class="card">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>Profiles</h3>
+                        <button class="btn btn-primary" onclick="ModalManager.showProfileDialog()">
+                            + New Profile
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="profilesTable">
+                            <thead>
+                                <tr>
+                                    <th>Nama</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="profilesBody">
+                                <tr><td colspan="3" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Page -->
+            <div id="historyPage" class="page">
+                <div class="card">
+                    <h3>Riwayat Bel</h3>
+                    <div class="table-container">
+                        <table class="data-table" id="historyTable">
+                            <thead>
+                                <tr>
+                                    <th>Waktu</th>
+                                    <th>Jadwal</th>
+                                    <th>Profile</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody">
+                                <tr><td colspan="4" class="text-center">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div id="settingsPage" class="page">
+                <div class="card">
+                    <h3>Pengaturan</h3>
+                    <div class="settings-group">
+                        <label>Auto Refresh (detik)</label>
+                        <input type="number" id="refreshInterval" value="2" min="1" max="10">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

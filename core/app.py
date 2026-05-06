@@ -1,7 +1,7 @@
 # core/app.py
 import logging
 # from datetime import datetime
-
+from PyQt6.QtCore import QTimer
 from core.config import get_config
 from core.database import get_db_manager
 from core.repositories import get_repository
@@ -107,8 +107,8 @@ class CoreApp:
                 profile_name=payload["profile"]
             )
 
-            # QTimer.singleShot(0, lambda: self.events.emit("BELL_UI", payload))
-            self.events.emit("BELL_UI", payload)
+            QTimer.singleShot(0, lambda: self.events.emit("BELL_UI", payload))
+            # self.events.emit("BELL_UI", payload)
 
         except Exception as e:
             logger.error(f"BELL_TRIGGERED handler error: {e}")
