@@ -311,6 +311,21 @@ class MainWindow(QMainWindow):
         self._create_root()
         self._create_superbar()
         self._create_middle()
+        
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+
+        footer = QLabel("SCHOOL BELL AUTOMATION | V1.0 - Ravaa Creative")
+        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # styling biar soft (tidak putih mencolok)
+        footer.setStyleSheet("""
+            color: #8f96a3;
+            font-size: 11px;
+            padding: 4px;
+        """)
+
+        self.status_bar.addPermanentWidget(footer, 1)
 
     def _set_window(self):
         self.setWindowTitle("SCHOOL BELL AUTOMATION")

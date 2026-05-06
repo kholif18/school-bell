@@ -88,16 +88,22 @@ class TrayIcon(QSystemTrayIcon):
     def toggle_system(self):
         if self.app.is_running():
             self.app.stop_system()
-            self.toggle_system_action.setText("▶ Start System")
+            self.toggle_system_action.setText("Start System")
         else:
             self.app.start_system()
-            self.toggle_system_action.setText("⏹ Stop System")
+            self.toggle_system_action.setText("Stop System")
 
     def refresh_state(self):
         if self.app.is_running():
-            self.toggle_system_action.setText("⏹ Stop System")
+            self.toggle_system_action.setText("Stop System")
+            self.toggle_system_action.setIcon(
+                self.window.style().standardIcon(QStyle.StandardPixmap.SP_MediaStop)
+            )
         else:
-            self.toggle_system_action.setText("▶ Start System")
+            self.toggle_system_action.setText("Start System")
+            self.toggle_system_action.setIcon(
+                self.window.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay)
+            )
             
     def show_window(self):
         self.window.showNormal()
