@@ -1,5 +1,6 @@
 # apps/desktop/models/schedule_table_model.py
-from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, QColor
+from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt6.QtGui import QColor
 from datetime import datetime
 
 class ScheduleTableModel(QAbstractTableModel):

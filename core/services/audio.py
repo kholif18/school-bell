@@ -1,9 +1,8 @@
-# core/services/audio.py
-
 import threading
 import queue
 import os
 import logging
+import time
 from typing import Optional
 
 import pygame
@@ -15,70 +14,63 @@ logger = logging.getLogger(__name__)
 
 
 class AudioService:
-    """
-    Clean Audio Service (Production Ready)
-
-    Rules:
-    - single worker thread
-    - queue-based playback
-    - pygame safe init
-    - NO business logic
-    """
 
     def __init__(self):
         self.paths = get_paths()
         self.config = get_config()
 
-        self._queue = queue.Queue()
-        self._lock = threading.RLock()
-        self._running = True
-
         self.audio_dir = self.paths.AUDIO_DIR
         self.default_audio = self.paths.DEFAULT_AUDIO
+
+        self._queue = queue.Queue()
+        self._running = True
+        self._stop_flag = False
+        self._lock = threading.RLock()
 
         self._init_mixer()
         self._ensure_default_audio()
 
-        self._worker = threading.Thread(
-            target=self._loop,
-            daemon=True
-        )
+        self._worker = threading.Thread(target=self._loop, daemon=True)
         self._worker.start()
 
         logger.info("AudioService initialized")
 
-    # =========================
+    # =====================================================
     # INIT
-    # =========================
+    # =====================================================
 
     def _init_mixer(self):
         try:
             if not pygame.mixer.get_init():
                 pygame.mixer.init()
         except Exception as e:
-            logger.error(f"Pygame init failed: {e}")
+            logger.error(f"Pygame mixer init failed: {e}")
 
     def _ensure_default_audio(self):
         if not os.path.exists(self.default_audio):
             logger.warning("Default audio missing")
 
-    # =========================
+    # =====================================================
     # PUBLIC API
-    # =========================
+    # =====================================================
 
     def play(self, file: Optional[str] = None):
-        """
-        Enqueue audio safely
-        """
         target = file if file and os.path.exists(file) else self.default_audio
+
+        # interrupt current playback
+        self.stop()
+
+        self._stop_flag = False
         self._queue.put(target)
 
     def stop(self):
-        """
-        Stop playback + clear queue
-        """
-        with self._lock:
+        self._stop_flag = True
+
+        try:
             pygame.mixer.music.stop()
+            pygame.mixer.music.unload()
+        except:
+            pass
 
         while not self._queue.empty():
             try:
@@ -91,47 +83,49 @@ class AudioService:
         pygame.mixer.music.set_volume(volume)
 
     def is_busy(self):
-        return pygame.mixer.music.get_busy()
+        try:
+            return pygame.mixer.music.get_busy()
+        except:
+            return False
 
-    # =========================
-    # WORKER LOOP
-    # =========================
+    # =====================================================
+    # WORKER
+    # =====================================================
 
     def _loop(self):
         while self._running:
             try:
-                audio = self._queue.get(timeout=0.5)
+                audio = self._queue.get(timeout=0.2)
                 self._play(audio)
             except queue.Empty:
                 continue
             except Exception as e:
-                logger.error(f"Audio loop error: {e}")
+                logger.error(f"Audio worker error: {e}")
 
-    def _play(self, audio_file: str):
-        with self._lock:
-            try:
-                pygame.mixer.music.load(audio_file)
-                pygame.mixer.music.play()
+    def _play(self, audio_file):
+        try:
+            pygame.mixer.music.load(audio_file)
+            pygame.mixer.music.play()
 
-                while pygame.mixer.music.get_busy():
-                    pygame.time.wait(100)
+            while pygame.mixer.music.get_busy():
+                if self._stop_flag:
+                    pygame.mixer.music.stop()
+                    break
 
-            except Exception as e:
-                logger.error(f"Playback error: {e}")
+                time.sleep(0.05)
 
-    # =========================
-    # LIFECYCLE
-    # =========================
+        except Exception as e:
+            logger.error(f"Playback error: {e}")
+
+    # =====================================================
+    # CLOSE
+    # =====================================================
 
     def shutdown(self):
         self._running = False
         self.stop()
         logger.info("AudioService shutdown")
 
-
-# =========================
-# SINGLETON
-# =========================
 
 _audio_service = None
 _lock = threading.Lock()

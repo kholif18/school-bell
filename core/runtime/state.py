@@ -16,6 +16,7 @@ class AppState:
 
     active_jobs: int = 0
     next_bell: Optional[datetime] = None
+    next_bell_name: Optional[str] = None
 
     last_started: Optional[datetime] = None
     last_stopped: Optional[datetime] = None
@@ -71,8 +72,14 @@ class StateManager:
         self._state.active_jobs = count
         self._state.updated_at = datetime.now()
 
-    def _on_next_bell(self, dt):
-        self._state.next_bell = dt
+    def _on_next_bell(self, payload):
+        if payload is None:
+            self._state.next_bell = None
+            self._state.next_bell_name = None
+        else:
+            self._state.next_bell = payload.get("time")
+            self._state.next_bell_name = payload.get("name")
+
         self._state.updated_at = datetime.now()
 
     # =========================
@@ -87,6 +94,7 @@ class StateManager:
             "active_profile_name": s.active_profile_name,
             "active_jobs": s.active_jobs,
             "next_bell": s.next_bell,
+            "next_bell_name": s.next_bell_name,
             "last_started": s.last_started,
             "last_stopped": s.last_stopped,
             "updated_at": s.updated_at,

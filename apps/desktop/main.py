@@ -2,19 +2,23 @@
 import sys
 from PyQt6.QtWidgets import QApplication
 
+from core.app import CoreApp
 from apps.desktop.main_window import MainWindow
 from apps.desktop.tray_icon import TrayIcon
 
 
 def run():
-    app = QApplication(sys.argv)
+    backend = CoreApp()
+    backend.initialize()
 
-    window = MainWindow()
-    tray = TrayIcon(app, window)
+    qt = QApplication(sys.argv)
+
+    window = MainWindow(backend)
+    tray = TrayIcon(qt, window)
 
     window.show()
 
-    sys.exit(app.exec())
+    sys.exit(qt.exec())
 
 
 if __name__ == "__main__":

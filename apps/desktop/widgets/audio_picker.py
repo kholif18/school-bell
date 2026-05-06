@@ -1,81 +1,53 @@
 # desktop/widgets/audio_picker.py
 from PyQt6.QtWidgets import *
-from PyQt6.QtCore import pyqtSignal
-from pathlib import Path
-
-from core.audio_manager import get_audio_manager
+from PyQt6.QtCore import *
+import os
 
 
 class AudioPicker(QWidget):
-    fileChanged = pyqtSignal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, app_core, parent=None):
         super().__init__(parent)
+
+        self.app = app_core
         self.current_file = None
-        self._setup_ui()
 
-    def _setup_ui(self):
+        self._build()
+
+    def _build(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
 
-        self.label = QLabel("🔔 Default bell")
-        self.label.setStyleSheet("color: #8B949E;")
+        self.path_input = QLineEdit()
+        self.path_input.setReadOnly(True)
 
-        self.browse_btn = QPushButton("Browse")
-        self.browse_btn.clicked.connect(self._browse)
+        self.pick_btn = QPushButton("Browse")
+        self.test_btn = QPushButton("Test")
 
-        self.play_btn = QPushButton("Play")
-        self.play_btn.clicked.connect(self._preview)
-        self.play_btn.setEnabled(False)
+        layout.addWidget(self.path_input)
+        layout.addWidget(self.pick_btn)
+        layout.addWidget(self.test_btn)
 
-        self.clear_btn = QPushButton("Clear")
-        self.clear_btn.clicked.connect(self._clear)
-        self.clear_btn.setEnabled(False)
+        self.pick_btn.clicked.connect(self.pick_file)
+        self.test_btn.clicked.connect(self.test_audio)
 
-        layout.addWidget(self.label, 2)
-        layout.addWidget(self.browse_btn)
-        layout.addWidget(self.play_btn)
-        layout.addWidget(self.clear_btn)
-
-    # =========================
-    # FILE ACTIONS
-    # =========================
-    def _browse(self):
-        path, _ = QFileDialog.getOpenFileName(
+    def pick_file(self):
+        file, _ = QFileDialog.getOpenFileName(
             self,
             "Select Audio",
             "",
-            "Audio (*.mp3 *.wav *.ogg)"
+            "Audio Files (*.mp3 *.wav)"
         )
-        if path:
-            self.set_file(path)
 
-    def set_file(self, path: str):
-        self.current_file = path
+        if file:
+            self.current_file = file
+            self.path_input.setText(file)
 
-        name = Path(path).name
-        self.label.setText(f"🎵 {name}")
-        self.label.setStyleSheet("color: #39FF14;")
+    def test_audio(self):
+        self.app.test_audio(self.current_file)
 
-        self.play_btn.setEnabled(True)
-        self.clear_btn.setEnabled(True)
-
-        self.fileChanged.emit(path)
-
-    def _preview(self):
-        if self.current_file:
-            get_audio_manager().play(self.current_file)
-
-    def _clear(self):
-        self.current_file = None
-
-        self.label.setText("🔔 Default bell")
-        self.label.setStyleSheet("color: #8B949E;")
-
-        self.play_btn.setEnabled(False)
-        self.clear_btn.setEnabled(False)
-
-        self.fileChanged.emit("")
-
-    def get_path(self):
+    def get_value(self):
         return self.current_file
+
+    def set_value(self, path):
+        self.current_file = path
+        self.path_input.setText(path or "")

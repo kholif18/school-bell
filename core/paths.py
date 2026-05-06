@@ -16,15 +16,23 @@ class Paths:
     def __init__(self):
         self.BASE_DIR = self._get_base_dir()
 
-        # core folders
         self.DB_DIR = self.BASE_DIR / "db"
         self.LOG_DIR = self.BASE_DIR / "logs"
         self.ASSETS_DIR = self.BASE_DIR / "assets"
         self.CONFIG_FILE = self.BASE_DIR / "config.json"
 
-        # audio
         self.AUDIO_DIR = self.ASSETS_DIR / "audio"
         self.DEFAULT_AUDIO = self.AUDIO_DIR / "default_bell.wav"
+
+        # backward compatibility aliases
+        self.base_dir = self.BASE_DIR
+        self.db_dir = self.DB_DIR
+        self.log_dir = self.LOG_DIR
+        self.assets_dir = self.ASSETS_DIR
+
+        self.config_file = self.CONFIG_FILE
+        self.audio_dir = self.AUDIO_DIR
+        self.default_audio = self.DEFAULT_AUDIO
 
     # =========================
     # BASE DIR RESOLUTION

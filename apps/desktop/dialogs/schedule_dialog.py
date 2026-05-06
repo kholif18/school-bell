@@ -1,18 +1,22 @@
 # apps/desktop/dialogs/schedule_dialog.py
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import QTime
+
 from apps.desktop.widgets.audio_picker import AudioPicker
 
 
 class ScheduleDialog(QDialog):
 
-    WEEKDAYS = [0,1,2,3,4]
-    WEEKEND = [5,6]
-    ALL = [0,1,2,3,4,5,6]
-    DAYS = ["Sen","Sel","Rab","Kam","Jum","Sab","Min"]
+    SCHOOL_DAYS = [0, 1, 2, 3, 4, 5] 
+    WEEKDAYS = [0, 1, 2, 3, 4]
+    WEEKEND = [5, 6]
+    ALL = [0, 1, 2, 3, 4, 5, 6]
+    DAYS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"]
 
-    def __init__(self, parent=None, schedule=None):
+    def __init__(self, app_core, parent=None, schedule=None):
         super().__init__(parent)
+
+        self.app = app_core
         self.schedule = schedule
 
         self._ui()
@@ -20,16 +24,20 @@ class ScheduleDialog(QDialog):
         if schedule:
             self._load()
         else:
-            self._set_days(self.WEEKDAYS)
+            self._set_days(self.SCHOOL_DAYS)
 
-    # ================= UI =================
+    # =====================================================
+    # UI
+    # =====================================================
+
     def _ui(self):
-        self.setWindowTitle("Edit" if self.schedule else "Add Schedule")
+        self.setWindowTitle("Edit Schedule" if self.schedule else "Add Schedule")
         self.setMinimumWidth(450)
 
         layout = QVBoxLayout(self)
 
         self.name = QLineEdit()
+
         self.time = QTimeEdit()
         self.time.setDisplayFormat("HH:mm")
 
@@ -43,7 +51,8 @@ class ScheduleDialog(QDialog):
         self._preset(layout)
 
         layout.addWidget(QLabel("Audio"))
-        self.audio = AudioPicker()
+
+        self.audio = AudioPicker(self.app)
         layout.addWidget(self.audio)
 
         btn = QDialogButtonBox(
@@ -56,7 +65,10 @@ class ScheduleDialog(QDialog):
 
         layout.addWidget(btn)
 
-    # ================= DAYS =================
+    # =====================================================
+    # DAYS
+    # =====================================================
+
     def _days(self, layout):
         box = QHBoxLayout()
         self.checks = []
@@ -69,41 +81,55 @@ class ScheduleDialog(QDialog):
         layout.addLayout(box)
 
     def _set_days(self, days):
-        for i, c in enumerate(self.checks):
-            c.setChecked(i in days)
+        for i, cb in enumerate(self.checks):
+            cb.setChecked(i in days)
 
     def _get_days(self):
-        return [i for i,c in enumerate(self.checks) if c.isChecked()]
+        return [i for i, cb in enumerate(self.checks) if cb.isChecked()]
 
-    # ================= PRESET =================
+    # =====================================================
+    # PRESET
+    # =====================================================
+
     def _preset(self, layout):
+        layout.addWidget(QLabel("Preset Hari"))
+
         box = QHBoxLayout()
 
-        btn1 = QPushButton("Weekdays")
-        btn2 = QPushButton("Weekend")
-        btn3 = QPushButton("All")
+        btn1 = QPushButton("School")
+        btn2 = QPushButton("Weekdays")
+        btn3 = QPushButton("Weekend")
+        btn4 = QPushButton("All")
 
-        btn1.clicked.connect(lambda: self._set_days(self.WEEKDAYS))
-        btn2.clicked.connect(lambda: self._set_days(self.WEEKEND))
-        btn3.clicked.connect(lambda: self._set_days(self.ALL))
+        btn1.clicked.connect(lambda: self._set_days(self.SCHOOL_DAYS))
+        btn2.clicked.connect(lambda: self._set_days(self.WEEKDAYS))
+        btn3.clicked.connect(lambda: self._set_days(self.WEEKEND))
+        btn4.clicked.connect(lambda: self._set_days(self.ALL))
 
-        box.addWidget(btn1)
-        box.addWidget(btn2)
-        box.addWidget(btn3)
+        for btn in [btn1, btn2, btn3, btn4]:
+            btn.setMaximumHeight(28)
+            box.addWidget(btn)
 
         layout.addLayout(box)
 
-    # ================= LOAD =================
+    # =====================================================
+    # LOAD
+    # =====================================================
+
     def _load(self):
         s = self.schedule
+
         self.name.setText(s.name)
         self.time.setTime(QTime(s.bell_time.hour, s.bell_time.minute))
         self._set_days(s.get_days_list())
 
         if s.audio_file:
-            self.audio.set_file(s.audio_file)
+            self.audio.set_value(s.audio_file)
 
-    # ================= OUTPUT =================
+    # =====================================================
+    # OUTPUT
+    # =====================================================
+
     def get_data(self):
         t = self.time.time()
 
@@ -111,12 +137,13 @@ class ScheduleDialog(QDialog):
             "name": self.name.text().strip(),
             "hour": t.hour(),
             "minute": t.minute(),
-            "days": self._get_days() or self.WEEKDAYS,
-            "audio_file": self.audio.get_path()
+            "days": self._get_days() or self.SCHOOL_DAYS,
+            "audio_file": self.audio.get_value()
         }
 
     def _ok(self):
         if not self.name.text().strip():
             QMessageBox.warning(self, "Error", "Name required")
             return
+
         self.accept()

@@ -1,140 +1,146 @@
-# desktop/widgets/superbar.py
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from datetime import datetime
 
 
-class SuperBar(QWidget):
+class SuperBar(QFrame):
+    tick = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
+
         self.setObjectName("superbar")
-        self._setup_ui()
+        self.setFixedHeight(82)
 
-    def _setup_ui(self):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(15, 8, 15, 8)
+        self._build()
 
-        # LEFT
-        left = QWidget()
-        left_layout = QVBoxLayout(left)
-        left_layout.setSpacing(2)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self._heartbeat)
+        self.timer.start(1000)
+        self.update_time()
 
-        self.profile_label = QLabel("📋 Profile: --")
-        self.profile_label.setStyleSheet("font-size: 12px; font-weight: bold;")
+    # =====================================================
+    # BUILD UI
+    # =====================================================
 
-        self.status_indicator = QLabel("🟢 RUNNING")
-        self.status_indicator.setObjectName("running_indicator")
+    def _build(self):
+        root = QHBoxLayout(self)
+        root.setContentsMargins(18, 8, 18, 8)
+        root.setSpacing(25)
 
-        left_layout.addWidget(self.profile_label)
-        left_layout.addWidget(self.status_indicator)
+        # ---------- LEFT INFO ----------
+        left = QVBoxLayout()
+        left.setSpacing(2)
 
-        # CENTER
-        center = QWidget()
-        center_layout = QVBoxLayout(center)
-        center_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.profile_label = QLabel("📋 Profile: None")
+        self.profile_label.setStyleSheet("font-size:13px; font-weight:bold;")
+
+        self.status_indicator = QLabel("🔴 STOPPED")
+        self.status_indicator.setStyleSheet("font-size:13px;")
+
+        left.addWidget(self.profile_label)
+        left.addWidget(self.status_indicator)
+
+        # ---------- CENTER CLOCK ----------
+        center_wrap = QWidget()
+        center_wrap.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+
+        center = QVBoxLayout(center_wrap)
+        center.setSpacing(0)
+        center.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.clock_label = QLabel("--:--:--")
-        self.clock_label.setObjectName("clock_display")
+        self.clock_label.setStyleSheet("font-size:24px; font-weight:bold;")
 
-        self.date_label = QLabel("--, -- -- ----")
-        self.date_label.setObjectName("date_display")
+        self.date_label = QLabel("-- --- ----")
+        self.date_label.setStyleSheet("font-size:11px; color:#999;")
 
-        center_layout.addWidget(self.clock_label)
-        center_layout.addWidget(self.date_label)
+        center.addWidget(self.clock_label)
+        center.addWidget(self.date_label)
 
-        # RIGHT
-        right = QWidget()
-        right_layout = QVBoxLayout(right)
-        right_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        # ---------- RIGHT NEXT BELL ----------
+        right = QVBoxLayout()
+        right.setSpacing(2)
+        right.setAlignment(Qt.AlignmentFlag.AlignRight)
 
-        right_layout.addWidget(QLabel("🔔 NEXT BELL"))
+        title = QLabel("🔔 NEXT BELL")
+        title.setStyleSheet("font-size:11px; color:#bbb;")
 
-        self.next_time_label = QLabel("--:--:--")
-        self.next_time_label.setObjectName("next_bell_time")
+        self.next_time_label = QLabel("--:--")
+        self.next_time_label.setStyleSheet("font-size:18px; font-weight:bold; color:#ffaa00;")
 
-        self.next_name_label = QLabel("No schedule")
-        self.next_name_label.setObjectName("next_bell_name")
+        self.next_name_label = QLabel("No upcoming bell")
+        self.next_name_label.setStyleSheet("font-size:11px; color:#ccc;")
 
-        right_layout.addWidget(self.next_time_label)
-        right_layout.addWidget(self.next_name_label)
+        right.addWidget(title)
+        right.addWidget(self.next_time_label)
+        right.addWidget(self.next_name_label)
 
-        layout.addWidget(left, 1)
-        layout.addWidget(center, 2)
-        layout.addWidget(right, 1)
+        # ---------- COMPOSE ----------
+        root.addLayout(left)
+        root.addWidget(center_wrap)
+        root.addLayout(right)
 
-    # =========================
-    # TIME
-    # =========================
+    # =====================================================
+    # CLOCK
+    # =====================================================
+
+    def _heartbeat(self):
+        self.update_time()
+        self.tick.emit()
+        
     def update_time(self):
         now = datetime.now()
         self.clock_label.setText(now.strftime("%H:%M:%S"))
-        self.date_label.setText(now.strftime("%a, %d %b %Y"))
+        self.date_label.setText(now.strftime("%A, %d %B %Y"))
 
-    # =========================
-    # NEXT BELL
-    # =========================
-    def update_next_bell(self, next_time, next_name):
-        if not next_time:
-            self._set_no_bell()
-            return
+    # =====================================================
+    # PROFILE / STATE
+    # =====================================================
 
-        if not hasattr(next_time, "strftime"):
-            self._set_raw(next_time, next_name)
-            return
-
-        self._set_countdown(next_time, next_name)
-
-    def _set_no_bell(self):
-        self.next_time_label.setText("--:--:--")
-        self.next_time_label.setStyleSheet("font-size: 22px; font-weight: bold; color: #FFA500;")
-        self.next_name_label.setText("No upcoming bell")
-
-    def _set_raw(self, next_time, next_name):
-        self.next_time_label.setText(str(next_time))
-        self.next_name_label.setText(next_name or "Bell")
-
-    def _set_countdown(self, next_time, next_name):
-        now = datetime.now()
-
-        if next_time.tzinfo:
-            next_time = next_time.replace(tzinfo=None)
-
-        diff = (next_time - now).total_seconds()
-
-        if diff <= 0:
-            self._set_now()
-        else:
-            self.next_time_label.setText(self._format_countdown(int(diff)))
-            self.next_name_label.setText((next_name or "Bell")[:30])
-
-    def _set_now(self):
-        self.next_time_label.setText("🔔 NOW!")
-        self.next_time_label.setStyleSheet("font-size: 22px; font-weight: bold; color: #39FF14;")
-
-    def _format_countdown(self, seconds: int) -> str:
-        h = seconds // 3600
-        m = (seconds % 3600) // 60
-        s = seconds % 60
-
-        if h > 0:
-            return f"{h}h {m}m"
-        if m > 0:
-            return f"{m}m {s}s"
-        return f"{s}s"
-
-    # =========================
-    # STATE UI
-    # =========================
     def update_profile(self, name):
         self.profile_label.setText(f"📋 Profile: {name}")
 
     def set_running(self, running: bool):
         if running:
             self.status_indicator.setText("🟢 RUNNING")
-            self.status_indicator.setObjectName("running_indicator")
         else:
             self.status_indicator.setText("🔴 STOPPED")
-            self.status_indicator.setObjectName("stopped_indicator")
 
-        self.status_indicator.style().unpolish(self.status_indicator)
-        self.status_indicator.style().polish(self.status_indicator)
+    # =====================================================
+    # NEXT BELL
+    # =====================================================
+
+    def update_next_bell(self, next_time, next_name):
+        if not next_time:
+            self.next_time_label.setText("--:--")
+            self.next_name_label.setText("No upcoming bell")
+            return
+
+        if hasattr(next_time, "strftime"):
+            now = datetime.now()
+
+            if getattr(next_time, "tzinfo", None):
+                next_time = next_time.replace(tzinfo=None)
+
+            diff = int((next_time - now).total_seconds())
+
+            if diff <= 0:
+                self.next_time_label.setText("🔔 NOW")
+            else:
+                self.next_time_label.setText(self._format_countdown(diff))
+        else:
+            self.next_time_label.setText(str(next_time))
+
+        self.next_name_label.setText(next_name or "Bell")
+
+    def _format_countdown(self, sec):
+        h = sec // 3600
+        m = (sec % 3600) // 60
+        s = sec % 60
+
+        if h > 0:
+            return f"{h}h {m}m"
+        if m > 0:
+            return f"{m}m {s}s"
+        return f"{s}s"

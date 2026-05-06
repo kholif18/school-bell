@@ -8,13 +8,8 @@ class UiBridge:
     Clean event wrapper (no direct access)
     """
 
-    def __init__(self):
-        self.client = AppClient()
+    def __init__(self, core_app):
+        self.core = core_app
 
-    def on(self, event: str, callback):
-        """Subscribe event"""
-        self.client.events.on(event, callback)
-
-    def emit(self, event: str, data=None):
-        """Emit event"""
-        self.client.events.emit(event, data)
+    def events(self):
+        return self.core.events

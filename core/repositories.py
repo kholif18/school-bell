@@ -145,6 +145,27 @@ class ScheduleRepository:
         finally:
             session.close()
 
+    def update_schedule(self, schedule_id: int, **kwargs) -> bool:
+        session = self._session()
+        try:
+            obj = session.query(BellSchedule).get(schedule_id)
+            if not obj:
+                return False
+
+            for key, value in kwargs.items():
+                if hasattr(obj, key):
+                    setattr(obj, key, value)
+
+            session.commit()
+            return True
+
+        except Exception as e:
+            session.rollback()
+            logger.error(f"update_schedule error: {e}")
+            return False
+        finally:
+            session.close()
+            
     def get_schedules_by_profile(self, profile_id: int) -> List[BellSchedule]:
         session = self._session()
         try:

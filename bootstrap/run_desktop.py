@@ -1,25 +1,17 @@
-# main.py
 import sys
-import logging
-
 from PyQt6.QtWidgets import QApplication
 
 from core.app import CoreApp
 from apps.desktop.main_window import MainWindow
 
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s - %(name)s - %(message)s"
-)
-
-
 def main():
-    backend = CoreApp()
-    backend.initialize()
-
     qt = QApplication(sys.argv)
-    window = MainWindow(backend)
+
+    core = CoreApp()
+    core.initialize()
+
+    window = MainWindow(core)
     window.show()
 
     sys.exit(qt.exec())

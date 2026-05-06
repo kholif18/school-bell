@@ -24,7 +24,6 @@ class SchedulerService:
     - NO state mutation
     - ONLY emit events
     """
-
     def __init__(self):
         self.repo = get_repository()
         self.config = get_config()
@@ -32,7 +31,12 @@ class SchedulerService:
 
         self._lock = threading.RLock()
 
-        self.scheduler = BackgroundScheduler(
+        self.scheduler = self._create_scheduler()
+
+        self.running = False
+
+    def _create_scheduler(self):
+        return BackgroundScheduler(
             timezone=ZoneInfo(self.config.get("timezone", "Asia/Jakarta")),
             job_defaults={
                 "coalesce": True,
@@ -40,9 +44,7 @@ class SchedulerService:
                 "misfire_grace_time": 30,
             },
         )
-
-        self.running = False
-
+    
     # =========================
     # CORE BELL TRIGGER
     # =========================
@@ -62,24 +64,59 @@ class SchedulerService:
             "time": now,
         })
 
-        self.events.emit("NEXT_BELL_UPDATED", None)
+        self._publish_next_bell()
 
+    def _publish_next_bell(self):
+        jobs = self.scheduler.get_jobs()
+
+        if not jobs:
+            self.events.emit("NEXT_BELL_UPDATED", None)
+            return
+
+        nearest_job = None
+        nearest_time = None
+
+        for job in jobs:
+            run_time = getattr(job, "next_run_time", None)
+            if not run_time:
+                continue
+
+            if nearest_time is None or run_time < nearest_time:
+                nearest_time = run_time
+                nearest_job = job
+
+        if nearest_job is None:
+            self.events.emit("NEXT_BELL_UPDATED", None)
+            return
+
+        self.events.emit("NEXT_BELL_UPDATED", {
+            "time": nearest_time,
+            "name": nearest_job.name
+        })
+        
     # =========================
     # LOAD JOBS
     # =========================
 
     def load_jobs(self) -> int:
         with self._lock:
-            self.scheduler.remove_all_jobs()
+            try:
+                self.scheduler.remove_all_jobs()
+            except:
+                pass
 
             profile = self.repo.get_active_profile()
             if not profile:
                 logger.warning("No active profile")
+                self.events.emit("JOBS_UPDATED", 0)
+                self.events.emit("NEXT_BELL_UPDATED", None)
                 return 0
 
             schedules = self.repo.get_schedules_by_profile(profile.id)
             if not schedules:
                 logger.warning("No schedules")
+                self.events.emit("JOBS_UPDATED", 0)
+                self.events.emit("NEXT_BELL_UPDATED", None)
                 return 0
 
             count = 0
@@ -124,6 +161,9 @@ class SchedulerService:
             if self.running:
                 return True
 
+            # rebuild scheduler fresh if previously shutdown
+            self.scheduler = self._create_scheduler()
+
             loaded = self.load_jobs()
             if loaded == 0:
                 return False
@@ -131,6 +171,7 @@ class SchedulerService:
             self.scheduler.start()
             self.running = True
 
+            self._publish_next_bell()
             self.events.emit("SYSTEM_STARTED")
             return True
 
@@ -139,9 +180,14 @@ class SchedulerService:
             if not self.running:
                 return False
 
-            self.scheduler.shutdown(wait=False)
+            try:
+                self.scheduler.shutdown(wait=False)
+            except Exception as e:
+                logger.warning(f"Scheduler shutdown warning: {e}")
+
             self.running = False
 
+            self.events.emit("NEXT_BELL_UPDATED", None)
             self.events.emit("SYSTEM_STOPPED")
             return True
 
@@ -150,6 +196,7 @@ class SchedulerService:
             return False
 
         self.load_jobs()
+        self._publish_next_bell()
         return True
 
     def switch_profile(self, profile_id: int) -> bool:
