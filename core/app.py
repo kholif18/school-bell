@@ -11,6 +11,7 @@ from core.services.scheduler import get_scheduler_service
 
 from core.runtime.events import get_event_bus
 from core.runtime.state import get_state_manager
+from core.services.autostart_service import AutoStartService
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +33,33 @@ class CoreApp:
         self.repo = get_repository()
 
         self.audio = get_audio_service()
-        self.scheduler = get_scheduler_service()
+        self.scheduler = get_scheduler_service(self.config)
 
         self.events = get_event_bus()
         self.state = get_state_manager()
 
+        self.config.on_change(self._on_config_change)
+        self.autostart_service = AutoStartService()
+        
         self._wire_events()
+
+    # =========================================================
+    # Config
+    # =========================================================
+    def _on_config_change(self, key, value):
+        # 🔊 volume live update
+        if key == "volume":
+            self.audio.set_volume(value)
+
+        # 📅 scheduler reload kalau setting penting berubah
+        if key.startswith("scheduler."):
+            self.scheduler.reload()
+
+        # ⏰ time update
+        if key in ["start_time", "end_time"]:
+            self.scheduler.reload()
+
+        logger.info(f"Config changed: {key} = {value}")
 
     # =========================================================
     # INITIALIZE
@@ -65,9 +87,6 @@ class CoreApp:
         self.events.on("BELL_TRIGGERED", self._handle_bell_trigger)
 
     def _handle_bell_trigger(self, payload):
-        """
-        Scheduler emits bell event -> CoreApp executes system actions
-        """
         try:
             schedule = payload["schedule"]
             profile_name = payload["profile"]
@@ -86,6 +105,11 @@ class CoreApp:
                 profile_name=profile_name
             )
 
+            self.events.emit("BELL_UI", {
+                "schedule": schedule,
+                "profile": profile_name
+            })
+
         except Exception as e:
             logger.error(f"BELL_TRIGGERED handler error: {e}")
 
@@ -94,10 +118,14 @@ class CoreApp:
     # =========================================================
 
     def start_system(self):
-        return self.scheduler.start()
+        result = self.scheduler.start()
+        self.events.emit("SYSTEM_STARTED", {})
+        return result
 
     def stop_system(self):
-        return self.scheduler.stop()
+        result = self.scheduler.stop()
+        self.events.emit("SYSTEM_STOPPED", {})
+        return result
 
     def reload_system(self):
         return self.scheduler.reload()

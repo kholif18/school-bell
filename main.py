@@ -1,11 +1,11 @@
 # main.py
 import sys
 import logging
-
 from PyQt6.QtWidgets import QApplication
 
 from core.app import CoreApp
 from apps.desktop.main_window import MainWindow
+from apps.desktop.tray_icon import TrayIcon
 
 
 logging.basicConfig(
@@ -19,7 +19,12 @@ def main():
     backend.initialize()
 
     qt = QApplication(sys.argv)
+
     window = MainWindow(backend)
+
+    tray = TrayIcon(qt, window, backend)
+    tray.show()
+
     window.show()
 
     sys.exit(qt.exec())

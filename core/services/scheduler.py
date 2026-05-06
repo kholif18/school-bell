@@ -24,9 +24,9 @@ class SchedulerService:
     - NO state mutation
     - ONLY emit events
     """
-    def __init__(self):
+    def __init__(self, config):
         self.repo = get_repository()
-        self.config = get_config()
+        self.config = config
         self.events = get_event_bus()
 
         self._lock = threading.RLock()
@@ -219,13 +219,5 @@ class SchedulerService:
 # SINGLETON
 # =========================
 
-_scheduler = None
-_lock = threading.Lock()
-
-
-def get_scheduler_service():
-    global _scheduler
-    with _lock:
-        if _scheduler is None:
-            _scheduler = SchedulerService()
-        return _scheduler
+def get_scheduler_service(config):
+    return SchedulerService(config)

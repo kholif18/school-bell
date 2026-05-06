@@ -20,6 +20,8 @@ class Config:
         self.data = self._default_config()
         self._load()
 
+        self._listeners = []
+
     # =========================
     # DEFAULT
     # =========================
@@ -34,6 +36,9 @@ class Config:
                 "max_instances": 1
             }
         }
+
+    def on_change(self, callback):
+        self._listeners.append(callback)
 
     # =========================
     # LOAD / SAVE
@@ -78,6 +83,13 @@ class Config:
 
             target[keys[-1]] = value
             self.save()
+
+        # 🔥 trigger realtime event
+        for cb in self._listeners:
+            try:
+                cb(key, value)
+            except Exception:
+                pass
 
 
 # singleton

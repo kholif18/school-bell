@@ -1,7 +1,7 @@
 {
   "app_name": "School Bell Automation",
   "timezone": "Asia/Jakarta",
-  "volume": 73,
+  "volume": 80,
   "scheduler": {
     "timezone": "Asia/Jakarta",
     "check_interval": 60
@@ -20,5 +20,8 @@
     "level": "DEBUG",
     "file": "logs/school_bell.log"
   },
-  "auto_start": true
+  "auto_start": true,
+  "autostart": true,
+  "tray": false,
+  "manual_bell_audio": "/home/trixie/school-bell/assets/audio/Pelajaran ke 5 Dimulai V1 (IND - ENG).mp3"
 }

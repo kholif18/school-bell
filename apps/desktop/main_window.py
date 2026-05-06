@@ -6,7 +6,11 @@ from apps.desktop.widgets.superbar import SuperBar
 from apps.desktop.tabs.history_tab import HistoryTab
 from apps.desktop.tabs.settings_tab import SettingsTab
 from apps.desktop.controllers.main_controller import MainController
+from core.paths import get_paths
+from PyQt6.QtGui import QIcon
 
+paths = get_paths()
+icon_path = paths.icon_dir / "schoolbell.png"
 
 INDUSTRIAL_STYLE = """
 /* =========================================================
@@ -285,6 +289,13 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.app = app_core
+        
+        paths = get_paths()
+
+        self.setWindowIcon(
+            QIcon(str(paths.icon_dir / "schoolbell.png"))
+        )
+
         self.controller = MainController(self, self.app)
 
         self._build_ui()
@@ -327,6 +338,11 @@ class MainWindow(QMainWindow):
 
         splitter.setSizes([220, 900])
         self.layout.addWidget(splitter)
+
+    def closeEvent(self, event):
+        event.ignore()
+        self.hide()
+        self.app.events.emit("WINDOW_HIDDEN", {})
 
     # =====================================================
     # SIDEBAR
@@ -499,6 +515,7 @@ class MainWindow(QMainWindow):
         self.app.events.on("SYSTEM_STARTED", lambda _: c.update_system_status())
         self.app.events.on("SYSTEM_STOPPED", lambda _: c.update_system_status())
         self.app.events.on("PROFILE_CHANGED", lambda _: c.load_profiles())
+        self.app.events.on("BELL_TRIGGERED", lambda _: self.history_tab.refresh())
 
         # SUPERBAR HEARTBEAT
         self.superbar.tick.connect(c._update_next_bell_display)
@@ -508,4 +525,5 @@ class MainWindow(QMainWindow):
     # =====================================================
 
     def closeEvent(self, event):
-        self.controller.handle_close(event)
+        event.ignore()
+        self.hide()

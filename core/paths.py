@@ -19,6 +19,7 @@ class Paths:
         self.DB_DIR = self.BASE_DIR / "db"
         self.LOG_DIR = self.BASE_DIR / "logs"
         self.ASSETS_DIR = self.BASE_DIR / "assets"
+        self.ICON_DIR = self.ASSETS_DIR / "icon"
         self.CONFIG_FILE = self.BASE_DIR / "config.json"
 
         self.AUDIO_DIR = self.ASSETS_DIR / "audio"
@@ -27,6 +28,7 @@ class Paths:
         # backward compatibility aliases
         self.base_dir = self.BASE_DIR
         self.db_dir = self.DB_DIR
+        self.icon_dir = self.ICON_DIR
         self.log_dir = self.LOG_DIR
         self.assets_dir = self.ASSETS_DIR
 

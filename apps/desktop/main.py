@@ -8,18 +8,18 @@ from apps.desktop.tray_icon import TrayIcon
 
 
 def run():
+    qt = QApplication(sys.argv)
+
     backend = CoreApp()
     backend.initialize()
 
-    qt = QApplication(sys.argv)
-
     window = MainWindow(backend)
-    tray = TrayIcon(qt, window)
+
+    tray = TrayIcon(qt, window, backend)
 
     window.show()
 
     sys.exit(qt.exec())
-
 
 if __name__ == "__main__":
     run()
