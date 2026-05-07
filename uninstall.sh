@@ -1,10 +1,18 @@
+# uninstall.sh
 #!/bin/bash
 
-echo "🗑 Removing School Bell..."
+set -e
 
-sudo rm -rf /opt/school-bell
-sudo rm -f /usr/share/applications/school-bell.desktop
-sudo rm -f /usr/bin/school-bell
+APP_DIR="/opt/school-bell"
+DESKTOP_FILE="/usr/share/applications/school-bell.desktop"
+LAUNCHER_LINK="/usr/bin/school-bell"
+
+echo "🗑️ Uninstalling School Bell Automation..."
+
+sudo rm -f "$DESKTOP_FILE"
+sudo rm -f "$LAUNCHER_LINK"
+sudo rm -rf "$APP_DIR"
+
 rm -f ~/.config/autostart/school-bell.desktop
 
-echo "✅ Uninstalled successfully"
+echo "✅ Uninstall complete!"
