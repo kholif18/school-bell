@@ -113,6 +113,22 @@ def create_web_app(core):
                 "ok": False,
                 "error": str(e)
             }), 500
+        
+    @app.route('/api/stop-bell', methods=['POST'])
+    def stop_bell():
+        try:
+            bell_service.stop()
+
+            return jsonify({
+                'ok': True,
+                'message': 'Bell stopped'
+            })
+
+        except Exception as e:
+            return jsonify({
+                'ok': False,
+                'error': str(e)
+            }), 500
 
     # =========================================================
     # PROFILE CRUD
@@ -405,6 +421,43 @@ def create_web_app(core):
             })
         except Exception as e:
             return jsonify({"ok": False, "error": str(e)}), 500
+        
+    # =========================================================
+    # AUDIO FILES
+    # =========================================================
+    @app.route('/api/schedules/audio-files')
+    def get_audio_files():
+        try:
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+            files = []
+
+            for filename in os.listdir(UPLOAD_FOLDER):
+                if allowed_file(filename):
+
+                    relative_path = os.path.join(
+                        "assets",
+                        "audio",
+                        filename
+                    ).replace("\\", "/")
+
+                    files.append({
+                        "name": filename,
+                        "path": relative_path
+                    })
+
+            files.sort(key=lambda x: x["name"])
+
+            return jsonify({
+                "ok": True,
+                "data": files
+            })
+
+        except Exception as e:
+            return jsonify({
+                "ok": False,
+                "error": str(e)
+            }), 500
     # =========================================================
     # HISTORY
     # =========================================================

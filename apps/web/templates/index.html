@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Bell Automation Dashboard</title>
     
-    <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icon/favicon.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icon/favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon/logo.png') }}">
@@ -15,39 +14,55 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar (minimal, hanya logo) -->
-        <aside class="sidebar">
-            <div class="logo">
-                <div class="logo-icon">
-                    <img src="{{ url_for('static', filename='icon/logo.png') }}" alt="Logo" class="logo-img">
-                </div>
-                <div class="logo-text">
-                    <h2>School Bell</h2>
-                    <span>Automation System</span>
-                </div>
-            </div>
-            
-            <div class="system-status">
-                <div class="status-indicator" id="systemStatus">
-                    <span class="status-dot"></span>
-                    <span class="status-text">Loading...</span>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Content - Split Panel -->
-        <main class="main-content">
+        <!-- Main Content - Split Panel (tanpa sidebar) -->
+        <main class="main-content full-width">
             <!-- Header -->
             <header class="main-header">
                 <div class="header-title">
-                    <h1>School Bell Automation</h1>
-                    <p>Manage profiles and schedules</p>
+                    <div class="logo-small">
+                        <img src="{{ url_for('static', filename='icon/logo.png') }}" alt="Logo" class="logo-small-img">
+                        <div>
+                            <h1>School Bell Automation</h1>
+                            <p>Manage profiles and schedules</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="datetime" id="datetime">
-                    <span class="time" id="currentTime">--:--:--</span>
-                    <span class="date" id="currentDate">-- --- ----</span>
+                <div class="header-actions">
+                     <div class="datetime" id="datetime">
+                        <span class="time" id="currentTime">--:--:--</span>
+                        <span class="date" id="currentDate">-- --- ----</span>
+                    </div>
+                    <div class="upcoming-bell" id="upcomingBell">
+                        <span class="upcoming-label">🔔 Upcoming</span>
+                        <span class="upcoming-time" id="upcomingBellTime">--:--</span>
+                        <span class="upcoming-name" id="upcomingBellName">No Schedule</span>
+                    </div>
+                    <div class="system-status-mini" id="systemStatus">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Loading...</span>
+                    </div>
                 </div>
             </header>
+
+            <!-- Control Bar -->
+            <div class="control-bar">
+                <div class="control-buttons">
+                    <button class="btn btn-success btn-small" onclick="systemControl.start()">▶ Start</button>
+                    <button class="btn btn-danger btn-small" onclick="systemControl.stop()">⏹ Stop</button>
+                    <button class="btn btn-primary btn-small" onclick="systemControl.testBell()">🔊 Test Bell</button>
+                    <button class="btn btn-warning btn-small" onclick="systemControl.stopBell()">🔇 Stop Bell</button>
+                    <button class="btn btn-secondary btn-small" onclick="systemControl.reload()">⟳ Reload</button>
+                </div>
+                <div class="active-profile-info">
+                    <span class="active-profile-label">
+                        🟢 Active Profile:
+                    </span>
+
+                    <span id="activeProfileName">
+                        None
+                    </span>
+                </div>
+            </div>
 
             <!-- Split Panel: Profiles + Schedules -->
             <div class="split-panel">
@@ -55,11 +70,10 @@
                 <div class="profiles-panel">
                     <div class="panel-header">
                         <h3>📁 PROFILES</h3>
-                        <button class="btn btn-primary btn-small" onclick="ModalManager.showProfileDialog()">
+                        <button class="btn btn-primary btn-small" onclick="ModalManager.showProfileDialog(null)">
                             + New
                         </button>
                     </div>
-                    
                     <div class="panel-body" id="profilesList">
                         <div class="loading-spinner">Loading profiles...</div>
                     </div>
@@ -70,30 +84,23 @@
                     <div class="panel-header">
                         <div>
                             <h3 id="schedulesPanelTitle">📋 SCHEDULES</h3>
-                            <div id="profileStatusWarning" class="profile-status-warning" style="display: none;">
-                                ⚠️ Profile INACTIVE - Schedules will NOT run
-                            </div>
+                            <div id="profileStatusWarning" class="profile-status-warning" style="display: none;"></div>
                         </div>
-                        <button class="btn btn-primary" id="addScheduleBtn" onclick="ModalManager.showScheduleDialog()">
+                        <button class="btn btn-primary" id="addScheduleBtn" onclick="ModalManager.showScheduleDialog(null)">
                             + Add Schedule
                         </button>
                     </div>
-
+                    
                     <div class="panel-body">
                         <div class="schedules-toolbar">
-                            <div class="filter-group">
-                                <input type="text" id="scheduleSearch" placeholder="🔍 Search schedule..." class="search-input">
-                            </div>
-                            <div class="filter-group">
-                                <select id="scheduleStatusFilter" class="status-filter">
-                                    <option value="all">All Status</option>
-                                    <option value="active">Active Only</option>
-                                    <option value="inactive">Inactive Only</option>
-                                </select>
-                            </div>
+                            <input type="text" id="scheduleSearch" placeholder="🔍 Search schedule..." class="search-input">
+                            <select id="scheduleStatusFilter" class="status-filter">
+                                <option value="all">All Status</option>
+                                <option value="active">Active Only</option>
+                                <option value="inactive">Inactive Only</option>
+                            </select>
                         </div>
-
-                        <div class="schedules-table-container" id="schedulesContainer">
+                        <div id="schedulesContainer" class="schedules-container">
                             <div class="empty-state">
                                 <div class="empty-icon">📅</div>
                                 <h4>No schedules</h4>
