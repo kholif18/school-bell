@@ -10,7 +10,7 @@ DESKTOP_FILE="/usr/share/applications/school-bell.desktop"
 LAUNCHER_LINK="/usr/bin/$BIN_NAME"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 echo "🔔 Installing $APP_NAME ..."
 
