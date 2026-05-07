@@ -308,15 +308,32 @@ function selectProfile(profileId) {
 }
 
 function activateProfile(profileId) {
-    if (confirm('Activate this profile? All schedules will be reloaded.')) {
+
+    Swal.fire({
+        title: 'Activate Profile?',
+        text: 'All schedules will be reloaded',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Activate',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#4CAF50'
+    }).then(function (result) {
+
+        if (!result.isConfirmed) return;
+
         API.profiles.activate(profileId)
             .then(function () {
                 return loadProfiles();
             })
             .then(function () {
-                if (currentSelectedProfile && currentSelectedProfile.id === profileId) {
+
+                if (
+                    currentSelectedProfile &&
+                    currentSelectedProfile.id === profileId
+                ) {
                     return selectProfile(profileId);
                 }
+
             })
             .then(function () {
                 showToast('Profile activated!', 'success');
@@ -324,7 +341,8 @@ function activateProfile(profileId) {
             .catch(function (error) {
                 showToast('Error: ' + error.message, 'danger');
             });
-    }
+
+    });
 }
 
 function editProfile(profileId) {
@@ -349,16 +367,40 @@ function editProfile(profileId) {
 }
 
 function deleteProfile(profileId) {
-    if (confirm('Delete this profile? All schedules in this profile will also be deleted!')) {
+    Swal.fire({
+        title: 'Delete Profile?',
+        text: 'All schedules in this profile will also be deleted!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#d33'
+    }).then(function (result) {
+
+        if (!result.isConfirmed) return;
+
         API.profiles.delete(profileId)
             .then(function () {
-                if (currentSelectedProfile && currentSelectedProfile.id === profileId) {
+
+                if (
+                    currentSelectedProfile &&
+                    currentSelectedProfile.id === profileId
+                ) {
                     currentSelectedProfile = null;
-                    var schedulesContainer = document.getElementById('schedulesContainer');
+
+                    var schedulesContainer =
+                        document.getElementById('schedulesContainer');
+
                     if (schedulesContainer) {
-                        schedulesContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">📅</div><h4>No schedules</h4><p>Select a profile or create a new schedule</p></div>';
+                        schedulesContainer.innerHTML =
+                            '<div class="empty-state">' +
+                            '<div class="empty-icon">📅</div>' +
+                            '<h4>No schedules</h4>' +
+                            '<p>Select a profile or create a new schedule</p>' +
+                            '</div>';
                     }
                 }
+
                 return loadProfiles();
             })
             .then(function () {
@@ -367,7 +409,8 @@ function deleteProfile(profileId) {
             .catch(function (error) {
                 showToast('Error: ' + error.message, 'danger');
             });
-    }
+
+    });
 }
 
 // =========================================================
@@ -525,6 +568,7 @@ function renderSchedulesTable(schedules) {
         html += '<td>' + formatDays(schedule.days_list, dayNames) + '</td>';
         html += '<td><span class="badge ' + (schedule.is_active ? 'badge-success' : 'badge-danger') + '">' + (schedule.is_active ? 'Active' : 'Inactive') + '</span></td>';
         html += '<td><div class="action-buttons">';
+        html += '<button class="btn-icon" onclick="testScheduleSound(' + schedule.id + ')" title="Test Sound">▶️</button>';
         html += '<button class="btn-icon" onclick="toggleSchedule(' + schedule.id + ', ' + (!schedule.is_active) + ')" title="' + (schedule.is_active ? 'Disable' : 'Enable') + '">' + (schedule.is_active ? '🔘' : '⚪') + '</button>';
         html += '<button class="btn-icon" onclick="editSchedule(' + schedule.id + ')" title="Edit">✏️</button>';
         html += '<button class="btn-icon" onclick="deleteSchedule(' + schedule.id + ')" title="Delete">🗑️</button>';
@@ -559,13 +603,58 @@ function editSchedule(scheduleId) {
         });
 }
 
+function testScheduleSound(scheduleId) {
+
+    var schedule = null;
+
+    for (var i = 0; i < currentSchedules.length; i++) {
+        if (currentSchedules[i].id === scheduleId) {
+            schedule = currentSchedules[i];
+            break;
+        }
+    }
+
+    if (!schedule) {
+        showToast('Schedule not found', 'danger');
+        return;
+    }
+
+    API.system.testBell(schedule.audio_file)
+        .then(function () {
+            showToast(
+                'Testing sound: ' + schedule.name,
+                'success'
+            );
+        })
+        .catch(function (error) {
+            showToast(
+                'Error testing sound: ' + error.message,
+                'danger'
+            );
+        });
+}
+
 function deleteSchedule(scheduleId) {
-    if (confirm('Delete this schedule?')) {
+
+    Swal.fire({
+        title: 'Delete Schedule?',
+        text: 'This action cannot be undone',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Delete',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#d33'
+    }).then(function (result) {
+
+        if (!result.isConfirmed) return;
+
         API.schedules.delete(scheduleId)
             .then(function () {
+
                 if (currentSelectedProfile) {
                     return loadSchedules(currentSelectedProfile.id);
                 }
+
             })
             .then(function () {
                 showToast('Schedule deleted!', 'warning');
@@ -573,7 +662,8 @@ function deleteSchedule(scheduleId) {
             .catch(function (error) {
                 showToast('Error: ' + error.message, 'danger');
             });
-    }
+
+    });
 }
 
 function toggleSchedule(scheduleId, newStatus) {
@@ -615,7 +705,10 @@ var ModalManager = {
             </div>
             <div class="form-group">
                 <label>Color</label>
-                <input type="color" id="profileColor" value="` + profileColor + `">
+                <input type="color"
+                    id="profileColor"
+                    class="color-picker"
+                    value="` + profileColor + `">
             </div>
         `, 'saveProfileBtn');
 
@@ -718,10 +811,12 @@ var ModalManager = {
                         <small>Select audio file from assets/audio directory</small>
                     </div>
                     <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="scheduleActive" ` + (isActive ? 'checked' : '') + `>
-                            Active
-                        </label>
+                        <div class="checkbox-inline" >
+                            <input type = "checkbox"
+                                id="scheduleActive"
+                                ` + (isActive ? 'checked' : '') + `>
+                            <label for="scheduleActive">Active</label>
+                        </div>
                     </div>
                     ` + (!isEdit ? '<input type="hidden" id="profileId" value="' + currentSelectedProfile.id + '">' : '') + `
                 `, 'saveScheduleBtn');

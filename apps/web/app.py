@@ -117,7 +117,7 @@ def create_web_app(core):
     @app.route('/api/stop-bell', methods=['POST'])
     def stop_bell():
         try:
-            bell_service.stop()
+            core.stop_audio()
 
             return jsonify({
                 'ok': True,
