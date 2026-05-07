@@ -72,8 +72,6 @@ echo "🔐 Setting permissions..."
 sudo find "$APP_DIR" -type d -exec chmod 755 {} \;
 sudo find "$APP_DIR" -type f -exec chmod 644 {} \;
 
-sudo chmod +x "$APP_DIR/run.sh"
-
 # =========================================================
 # PYTHON VENV
 # =========================================================
