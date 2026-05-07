@@ -136,7 +136,8 @@ class ScheduleRepository:
         name: str,
         bell_time: time,
         days: List[int],
-        audio_file: str = None
+        audio_file: str = None,
+        is_active: bool = True
     ) -> Optional[int]:
 
         session = self._session()
@@ -147,7 +148,7 @@ class ScheduleRepository:
                 bell_time=bell_time,
                 days_of_week=",".join(map(str, days)),
                 audio_file=audio_file,
-                is_active=True
+                is_active=is_active
             )
             session.add(obj)
             session.commit()
@@ -185,7 +186,7 @@ class ScheduleRepository:
         session = self._session()
         try:
             return session.query(BellSchedule)\
-                .filter_by(profile_id=profile_id, is_active=True)\
+                .filter_by(profile_id=profile_id)\
                 .order_by(BellSchedule.bell_time)\
                 .all()
         finally:

@@ -41,10 +41,18 @@ class MainController:
     def load_profiles(self):
         profiles = self.bridge.get_profiles()
 
+        active = self.bridge.get_active_profile()
+
+        # fallback pertama kali
+        if self.current_profile_id is None and active:
+            self.current_profile_id = active.id
+
         self.view.profile_list.blockSignals(True)
         self.view.profile_list.clear()
 
-        for p in profiles:
+        selected_row = None
+
+        for index, p in enumerate(profiles):
             item = QListWidgetItem(p.name)
             item.setData(Qt.ItemDataRole.UserRole, p.id)
 
@@ -54,15 +62,20 @@ class MainController:
 
             self.view.profile_list.addItem(item)
 
+            if p.id == self.current_profile_id:
+                selected_row = index
+
+        if selected_row is not None:
+            self.view.profile_list.setCurrentRow(selected_row)
+
         self.view.profile_list.blockSignals(False)
 
-        active = self.bridge.get_active_profile()
-        if active:
-            self.current_profile_id = active.id
-            self.view.superbar.update_profile(active.name)
+        if self.current_profile_id:
             self.load_schedules()
+
+        if active:
+            self.view.superbar.update_profile(active.name)
         else:
-            self.current_profile_id = None
             self.view.superbar.update_profile("None")
 
     def on_profile_click(self, item):
@@ -173,7 +186,8 @@ class MainController:
             name=data["name"],
             bell_time=time(data["hour"], data["minute"]),
             days=data["days"],
-            audio_file=data["audio_file"]
+            audio_file=data["audio_file"],
+            is_active=data["is_active"]
         )
 
         self.load_schedules()
@@ -196,7 +210,8 @@ class MainController:
             name=data["name"],
             bell_time=time(data["hour"], data["minute"]),
             days_of_week=",".join(map(str, data["days"])),
-            audio_file=data["audio_file"]
+            audio_file=data["audio_file"],
+            is_active=data["is_active"]
         )
 
         self.load_schedules()
@@ -208,11 +223,11 @@ class MainController:
         if not schedule:
             return
 
-        if QMessageBox.question(self.view, "Delete", f"Delete {schedule["name"]}?") == QMessageBox.StandardButton.Yes:
+        if QMessageBox.question(self.view, "Delete", f"Delete {schedule.name}?") == QMessageBox.StandardButton.Yes:
             self.bridge.delete_schedule(schedule.id)
             self.load_schedules()
             self._update_next_bell_display()
-            self.add_log(f"Schedule {schedule["name"]} deleted")
+            self.add_log(f"Schedule {schedule.name} deleted")
 
     # =====================================================
     # THEME

@@ -54,13 +54,14 @@ class ClientBridge:
     def get_schedule(self, schedule_id):
         return self.core.repo.get_schedule(schedule_id)
 
-    def add_schedule(self, profile_id, name, bell_time: time, days, audio_file=None):
+    def add_schedule(self, profile_id, name, bell_time: time, days, audio_file=None, is_active=True):
         result = self.core.repo.create_schedule(
             profile_id=profile_id,
             name=name,
             bell_time=bell_time,
             days=days,
-            audio_file=audio_file
+            audio_file=audio_file,
+            is_active=is_active
         )
         self.reload_jobs()
         return result

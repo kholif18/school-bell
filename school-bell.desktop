@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=School Bell Automation
+Comment=Automatic School Bell System
+Exec=python3 /opt/school-bell/main.py
+Icon=/opt/school-bell/assets/icon/schoolbell.png
+Terminal=false
+Type=Application
+Categories=Utility;Education;
+StartupNotify=true

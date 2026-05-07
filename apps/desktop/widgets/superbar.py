@@ -1,3 +1,5 @@
+from os import name
+
 from PyQt6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QLabel, QWidget, QSizePolicy, QGraphicsDropShadowEffect
 from PyQt6.QtCore import QTimer, pyqtSignal, Qt
 from PyQt6.QtGui import QColor
@@ -45,7 +47,7 @@ class SuperBar(QFrame):
         left = QVBoxLayout()
         left.setSpacing(2)
 
-        self.profile_label = QLabel("📋 Profile: None")
+        self.profile_label = QLabel("🟢 Active Profile: None")
         self.profile_label.setObjectName("profileLabel")
 
         self.status_indicator = QLabel("🔴 STOPPED")
@@ -113,15 +115,13 @@ class SuperBar(QFrame):
     # =====================================================
     # PROFILE / STATE
     # =====================================================
-
-    def update_profile(self, name):
-        self.profile_label.setText(f"📋 Profile: {name}")
-
     def set_running(self, running: bool):
         self.status_indicator.setText(
             "🟢 RUNNING" if running else "🔴 STOPPED"
         )
 
+    def update_profile(self, name):
+        self.profile_label.setText(f"🟢 Active Profile: {name}")
     # =====================================================
     # NEXT BELL
     # =====================================================

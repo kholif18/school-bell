@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Bell Automation Dashboard</title>
-     <!-- Favicon -->
+    
+    <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icon/favicon.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icon/favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon/logo.png') }}">
@@ -14,40 +15,17 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar -->
+        <!-- Sidebar (minimal, hanya logo) -->
         <aside class="sidebar">
             <div class="logo">
-                    <div class="logo-icon">
-                        <img src="{{ url_for('static', filename='icon/logo.png') }}" alt="Logo" class="logo-img">
-                    </div>
+                <div class="logo-icon">
+                    <img src="{{ url_for('static', filename='icon/logo.png') }}" alt="Logo" class="logo-img">
+                </div>
                 <div class="logo-text">
                     <h2>School Bell</h2>
                     <span>Automation System</span>
                 </div>
             </div>
-            
-            <nav class="nav-menu">
-                <a href="#" class="nav-item active" data-page="dashboard">
-                    <span class="nav-icon">📊</span>
-                    <span>Dashboard</span>
-                </a>
-                <a href="#" class="nav-item" data-page="schedules">
-                    <span class="nav-icon">📅</span>
-                    <span>Jadwal</span>
-                </a>
-                <a href="#" class="nav-item" data-page="profiles">
-                    <span class="nav-icon">👥</span>
-                    <span>Profiles</span>
-                </a>
-                <a href="#" class="nav-item" data-page="history">
-                    <span class="nav-icon">📜</span>
-                    <span>History</span>
-                </a>
-                <a href="#" class="nav-item" data-page="settings">
-                    <span class="nav-icon">⚙️</span>
-                    <span>Settings</span>
-                </a>
-            </nav>
             
             <div class="system-status">
                 <div class="status-indicator" id="systemStatus">
@@ -57,169 +35,71 @@
             </div>
         </aside>
 
-        <!-- Main Content -->
+        <!-- Main Content - Split Panel -->
         <main class="main-content">
             <!-- Header -->
             <header class="main-header">
                 <div class="header-title">
-                    <h1 id="pageTitle">Dashboard</h1>
-                    <p id="pageSubtitle">Overview sistem sekolah</p>
+                    <h1>School Bell Automation</h1>
+                    <p>Manage profiles and schedules</p>
                 </div>
-                <div class="header-actions">
-                    <div class="datetime" id="datetime">
-                        <span class="time" id="currentTime">--:--:--</span>
-                        <span class="date" id="currentDate">-- --- ----</span>
-                    </div>
+                <div class="datetime" id="datetime">
+                    <span class="time" id="currentTime">--:--:--</span>
+                    <span class="date" id="currentDate">-- --- ----</span>
                 </div>
             </header>
 
-            <!-- Dashboard Page -->
-            <div id="dashboardPage" class="page active">
-                <!-- Stats Cards -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon">⏰</div>
-                        <div class="stat-info">
-                            <h3 id="totalSchedules">0</h3>
-                            <p>Total Jadwal</p>
-                        </div>
+            <!-- Split Panel: Profiles + Schedules -->
+            <div class="split-panel">
+                <!-- LEFT PANEL: PROFILES -->
+                <div class="profiles-panel">
+                    <div class="panel-header">
+                        <h3>📁 PROFILES</h3>
+                        <button class="btn btn-primary btn-small" onclick="ModalManager.showProfileDialog()">
+                            + New
+                        </button>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">✅</div>
-                        <div class="stat-info">
-                            <h3 id="activeSchedules">0</h3>
-                            <p>Jadwal Aktif</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">📋</div>
-                        <div class="stat-info">
-                            <h3 id="activeProfile">-</h3>
-                            <p>Profile Aktif</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🔔</div>
-                        <div class="stat-info">
-                            <h3 id="nextBellTime">--:--</h3>
-                            <p>Next Bell</p>
-                        </div>
+                    
+                    <div class="panel-body" id="profilesList">
+                        <div class="loading-spinner">Loading profiles...</div>
                     </div>
                 </div>
 
-                <!-- Control Panel -->
-                <div class="control-panel">
-                    <h3>System Control</h3>
-                    <div class="control-buttons">
-                        <button class="btn btn-success btn-large" id="startBtn" onclick="systemControl.start()">
-                            <span>▶</span> Start System
-                        </button>
-                        <button class="btn btn-danger btn-large" id="stopBtn" onclick="systemControl.stop()">
-                            <span>⏹</span> Stop System
-                        </button>
-                        <button class="btn btn-primary" onclick="systemControl.testBell()">
-                            <span>🔊</span> Test Bell
-                        </button>
-                        <button class="btn btn-secondary" onclick="systemControl.reload()">
-                            <span>⟳</span> Reload
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Next Bell Info -->
-                <div class="next-bell-card">
-                    <h3>🔔 Next Schedule</h3>
-                    <div class="next-bell-info">
-                        <div class="bell-time-large" id="nextBellLarge">--:--</div>
-                        <div class="bell-name" id="nextBellName">No schedule</div>
-                        <div class="bell-countdown" id="countdown">-</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Schedules Page (Placeholder) -->
-            <div id="schedulesPage" class="page">
-                <div class="card">
-                    <!-- Di Schedules Page -->
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3>Jadwal Bel</h3>
-                        <button class="btn btn-primary" onclick="ModalManager.showScheduleDialog()">
+                <!-- RIGHT PANEL: SCHEDULES -->
+                <div class="schedules-panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 id="schedulesPanelTitle">📋 SCHEDULES</h3>
+                            <div id="profileStatusWarning" class="profile-status-warning" style="display: none;">
+                                ⚠️ Profile INACTIVE - Schedules will NOT run
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="addScheduleBtn" onclick="ModalManager.showScheduleDialog()">
                             + Add Schedule
                         </button>
                     </div>
-                    <div class="table-container">
-                        <table class="data-table" id="schedulesTable">
-                            <thead>
-                                <tr>
-                                    <th>Nama</th>
-                                    <th>Jam</th>
-                                    <th>Hari</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="schedulesBody">
-                                <tr><td colspan="4" class="text-center">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Profiles Page -->
-            <div id="profilesPage" class="page">
-                <div class="card">
-                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3>Profiles</h3>
-                        <button class="btn btn-primary" onclick="ModalManager.showProfileDialog()">
-                            + New Profile
-                        </button>
-                    </div>
-                    <div class="table-container">
-                        <table class="data-table" id="profilesTable">
-                            <thead>
-                                <tr>
-                                    <th>Nama</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="profilesBody">
-                                <tr><td colspan="3" class="text-center">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                    <div class="panel-body">
+                        <div class="schedules-toolbar">
+                            <div class="filter-group">
+                                <input type="text" id="scheduleSearch" placeholder="🔍 Search schedule..." class="search-input">
+                            </div>
+                            <div class="filter-group">
+                                <select id="scheduleStatusFilter" class="status-filter">
+                                    <option value="all">All Status</option>
+                                    <option value="active">Active Only</option>
+                                    <option value="inactive">Inactive Only</option>
+                                </select>
+                            </div>
+                        </div>
 
-            <!-- History Page -->
-            <div id="historyPage" class="page">
-                <div class="card">
-                    <h3>Riwayat Bel</h3>
-                    <div class="table-container">
-                        <table class="data-table" id="historyTable">
-                            <thead>
-                                <tr>
-                                    <th>Waktu</th>
-                                    <th>Jadwal</th>
-                                    <th>Profile</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="historyBody">
-                                <tr><td colspan="4" class="text-center">Loading...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Settings Page -->
-            <div id="settingsPage" class="page">
-                <div class="card">
-                    <h3>Pengaturan</h3>
-                    <div class="settings-group">
-                        <label>Auto Refresh (detik)</label>
-                        <input type="number" id="refreshInterval" value="2" min="1" max="10">
+                        <div class="schedules-table-container" id="schedulesContainer">
+                            <div class="empty-state">
+                                <div class="empty-icon">📅</div>
+                                <h4>No schedules</h4>
+                                <p>Select a profile or create a new schedule</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

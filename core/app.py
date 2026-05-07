@@ -153,6 +153,9 @@ class CoreApp:
             logger.info(f"Profile created: {name}")
 
         return pid
+        
+    def update_profile(self, profile_id, **kwargs):
+        return self.repo.update_profile(profile_id, **kwargs)
 
     def delete_profile(self, profile_id: int):
         return self.repo.delete_profile(profile_id)
@@ -176,32 +179,12 @@ class CoreApp:
         return sid
 
     def update_schedule(self, schedule_id, **kwargs):
-        """
-        sementara update manual via SQLAlchemy object
-        karena repo Anda belum ada method update_schedule
-        """
-        session = self.db.get_session()
-        try:
-            obj = session.get(type(self.repo.get_schedule(schedule_id)), schedule_id)
-            if not obj:
-                return False
+        ok = self.repo.update_schedule(schedule_id, **kwargs)
 
-            for k, v in kwargs.items():
-                setattr(obj, k, v)
+        if ok and self.is_running():
+            self.reload_system()
 
-            session.commit()
-
-            if self.is_running():
-                self.reload_system()
-
-            return True
-
-        except Exception as e:
-            session.rollback()
-            logger.error(f"update_schedule error: {e}")
-            return False
-        finally:
-            session.close()
+        return ok
 
     def delete_schedule(self, schedule_id: int):
         ok = self.repo.delete_schedule(schedule_id)

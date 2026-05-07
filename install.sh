@@ -1,34 +1,51 @@
 #!/bin/bash
 
-echo "======================================"
-echo " SCHOOL BELL AUTOMATION INSTALLER"
-echo "======================================"
+set -e
 
-PROJECT_DIR="$HOME/school-bell"
+APP_NAME="School Bell Automation"
+APP_DIR="/opt/school-bell"
+BIN_NAME="school-bell"
+DESKTOP_FILE="/usr/share/applications/school-bell.desktop"
+LAUNCHER_LINK="/usr/bin/school-bell"
 
-echo "[1/6] Installing system dependencies..."
-sudo pacman -Sy --noconfirm python python-pip git sdl2_mixer qt6-base
+echo "🔔 Installing $APP_NAME ..."
 
-echo "[2/6] Creating virtual environment..."
-python -m venv venv
+# 1. Copy project
+sudo mkdir -p $APP_DIR
+sudo cp -r ../* $APP_DIR
 
-echo "[3/6] Activating virtualenv..."
-source venv/bin/activate
+# 2. Permission
+sudo chmod -R 755 $APP_DIR
 
-echo "[4/6] Installing python requirements..."
-pip install --upgrade pip
-pip install -r requirements.txt
+# 3. Create symlink (global command)
+sudo ln -sf $APP_DIR/main.py $LAUNCHER_LINK
 
-echo "[5/6] Creating required directories..."
-mkdir -p db logs assets/audio
+# 4. Desktop entry (launcher icon)
+cat <<EOF | sudo tee $DESKTOP_FILE > /dev/null
+[Desktop Entry]
+Name=School Bell Automation
+Comment=Automatic School Bell System
+Exec=python3 $APP_DIR/main.py
+Icon=$APP_DIR/assets/icon/schoolbell.png
+Terminal=false
+Type=Application
+Categories=Utility;Education;
+StartupNotify=true
+EOF
 
-echo "[6/6] Setting executable permissions..."
-chmod +x start.sh
-chmod +x service/install_service.sh
+# 5. Auto start (GNOME / XFCE compatible)
+mkdir -p ~/.config/autostart
 
-echo ""
-echo "======================================"
-echo " INSTALLATION SUCCESS"
-echo "======================================"
-echo "Run application using:"
-echo "./start.sh"
+cat <<EOF > ~/.config/autostart/school-bell.desktop
+[Desktop Entry]
+Type=Application
+Exec=python3 $APP_DIR/main.py
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name=School Bell
+Comment=Auto start School Bell system
+EOF
+
+echo "✅ Installation complete!"
+echo "👉 Run with: school-bell"

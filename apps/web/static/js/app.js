@@ -1,5 +1,5 @@
 // =========================================================
-// SCHOOL BELL DASHBOARD - MAIN APPLICATION
+// SCHOOL BELL DASHBOARD - SPLIT PANEL VERSION
 // =========================================================
 
 // =========================================================
@@ -7,7 +7,6 @@
 // =========================================================
 
 const API = {
-    // Generic fetch wrapper
     async request(url, options = {}) {
         try {
             const response = await fetch(url, options);
@@ -22,7 +21,6 @@ const API = {
         }
     },
 
-    // Profile APIs
     profiles: {
         getAll: () => API.request('/api/profiles'),
         create: (name, description = '', color = '#4CAF50') =>
@@ -53,7 +51,6 @@ const API = {
         })
     },
 
-    // Schedule APIs
     schedules: {
         getAll: (profileId = null) => {
             const url = profileId ? `/api/schedules?profile_id=${profileId}` : '/api/schedules';
@@ -80,10 +77,10 @@ const API = {
         }),
         toggle: (id) => API.request(`/api/schedules/${id}/toggle`, {
             method: 'POST'
-        })
+        }),
+        getAudioFiles: () => API.request('/api/schedules/audio-files')
     },
 
-    // System APIs
     system: {
         start: () => API.request('/api/start', {
             method: 'POST'
@@ -110,7 +107,14 @@ const API = {
 };
 
 // =========================================================
-// UI COMPONENTS
+// GLOBAL VARIABLES
+// =========================================================
+
+let currentSelectedProfile = null;
+let currentSchedules = [];
+
+// =========================================================
+// MODAL MANAGER
 // =========================================================
 
 class ModalManager {
@@ -121,67 +125,92 @@ class ModalManager {
         const modal = this.createModal(title, `
             <div class="form-group">
                 <label>Profile Name *</label>
-                <input type="text" id="profileName" value="${this.escapeHtml(profile?.name || '')}" placeholder="e.g., Sekolah Pagi">
+                <input type="text" id="profileName" value="${this.escapeHtml(profile && profile.name || '')}" placeholder="e.g., Sekolah Pagi">
             </div>
             <div class="form-group">
                 <label>Description</label>
-                <textarea id="profileDesc" rows="3" placeholder="Optional description">${this.escapeHtml(profile?.description || '')}</textarea>
+                <textarea id="profileDesc" rows="3" placeholder="Optional description">${this.escapeHtml(profile && profile.description || '')}</textarea>
             </div>
             <div class="form-group">
                 <label>Color</label>
-                <input type="color" id="profileColor" value="${profile?.color || '#4CAF50'}">
+                <input type="color" id="profileColor" value="${profile && profile.color || '#4CAF50'}">
             </div>
-        `);
+        `, 'saveProfileBtn');
 
-        modal.querySelector('#saveProfileBtn').onclick = async () => {
-            const name = modal.querySelector('#profileName').value.trim();
-            if (!name) {
-                this.showAlert('Profile name required');
-                return;
-            }
-
-            const data = {
-                name,
-                description: modal.querySelector('#profileDesc').value,
-                color: modal.querySelector('#profileColor').value
-            };
-
-            try {
-                const result = isEdit ?
-                    await API.profiles.update(profile.id, data) :
-                    await API.profiles.create(data.name, data.description, data.color);
-
-                if (result.ok) {
-                    modal.remove();
-                    dashboard.loadProfiles();
-                    dashboard.showToast(isEdit ? 'Profile updated!' : 'Profile created!', 'success');
+        const saveBtn = modal.querySelector('#saveProfileBtn');
+        if (saveBtn) {
+            saveBtn.onclick = async () => {
+                const name = modal.querySelector('#profileName').value.trim();
+                if (!name) {
+                    alert('Profile name required');
+                    return;
                 }
-            } catch (error) {
-                this.showAlert('Error: ' + error.message);
-            }
-        };
+
+                const data = {
+                    name: name,
+                    description: modal.querySelector('#profileDesc').value,
+                    color: modal.querySelector('#profileColor').value
+                };
+
+                try {
+                    const result = isEdit ?
+                        await API.profiles.update(profile.id, data) :
+                        await API.profiles.create(data.name, data.description, data.color);
+
+                    if (result.ok) {
+                        modal.remove();
+                        await loadProfiles();
+                        dashboard.showToast(isEdit ? 'Profile updated!' : 'Profile created!', 'success');
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            };
+        }
     }
 
-    static showScheduleDialog(schedule = null, profileId = null) {
+    static async showScheduleDialog(schedule = null) {
         const isEdit = schedule !== null;
         const title = isEdit ? 'Edit Schedule' : 'New Schedule';
         const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
 
+        if (!isEdit && !currentSelectedProfile) {
+            dashboard.showToast('Please select a profile first', 'warning');
+            return;
+        }
+
+        // Get audio files
+        let audioFiles = [];
+        try {
+            const result = await API.schedules.getAudioFiles();
+            if (result.ok && result.data) {
+                audioFiles = result.data;
+            }
+        } catch (error) {
+            console.error('Error loading audio files:', error);
+        }
+
         const daysCheckboxes = dayNames.map((day, idx) => `
             <label class="day-checkbox">
-                <input type="checkbox" value="${idx}" ${schedule?.days_list?.includes(idx) ? 'checked' : ''}>
+                <input type="checkbox" value="${idx}" ${schedule && schedule.days_list && schedule.days_list.includes(idx) ? 'checked' : ''}>
                 <span>${day}</span>
             </label>
+        `).join('');
+
+        const audioOptions = audioFiles.map(file => `
+            <option value="${this.escapeHtml(file.path)}" ${schedule && schedule.audio_file === file.path ? 'selected' : ''}>
+                ${this.escapeHtml(file.name)}
+            </option>
         `).join('');
 
         const modal = this.createModal(title, `
             <div class="form-group">
                 <label>Schedule Name *</label>
-                <input type="text" id="scheduleName" value="${this.escapeHtml(schedule?.name || '')}" placeholder="e.g., Bel Masuk">
+                <input type="text" id="scheduleName" value="${this.escapeHtml(schedule && schedule.name || '')}" placeholder="e.g., Bel Masuk">
             </div>
             <div class="form-group">
                 <label>Time</label>
-                <input type="time" id="scheduleTime" value="${schedule?.bell_time || '07:00'}">
+                <input type="time" id="scheduleTime" value="${schedule && schedule.bell_time || '07:00'}">
             </div>
             <div class="form-group">
                 <label>Days</label>
@@ -189,72 +218,78 @@ class ModalManager {
             </div>
             <div class="form-group">
                 <label>Audio File (Optional)</label>
-                <input type="text" id="scheduleAudio" value="${this.escapeHtml(schedule?.audio_file || '')}" placeholder="path/to/audio.mp3">
-                <small>Leave empty for default bell</small>
+                <select id="scheduleAudio" class="audio-select">
+                    <option value="">🔔 Default Bell</option>
+                    ${audioOptions}
+                </select>
+                <small>Select audio file from assets/audio directory</small>
             </div>
             <div class="form-group">
                 <label>
-                    <input type="checkbox" id="scheduleActive" ${schedule?.is_active !== false ? 'checked' : ''}>
+                    <input type="checkbox" id="scheduleActive" ${schedule && schedule.is_active !== false ? 'checked' : 'checked'}>
                     Active
                 </label>
             </div>
-        `);
+            ${!isEdit ? `<input type="hidden" id="profileId" value="${currentSelectedProfile.id}">` : ''}
+        `, 'saveScheduleBtn');
 
-        modal.querySelector('#saveScheduleBtn').onclick = async () => {
-            const name = modal.querySelector('#scheduleName').value.trim();
-            if (!name) {
-                this.showAlert('Schedule name required');
-                return;
-            }
-
-            const timeValue = modal.querySelector('#scheduleTime').value;
-            const [hour, minute] = timeValue.split(':').map(Number);
-            const days = Array.from(modal.querySelectorAll('#daysCheckboxes input:checked'))
-                .map(cb => parseInt(cb.value));
-
-            const data = {
-                name,
-                hour,
-                minute,
-                days,
-                audio_file: modal.querySelector('#scheduleAudio').value || null,
-                is_active: modal.querySelector('#scheduleActive').checked
-            };
-
-            if (!isEdit && profileId) {
-                data.profile_id = profileId;
-            }
-
-            try {
-                const result = isEdit ?
-                    await API.schedules.update(schedule.id, data) :
-                    await API.schedules.create(data);
-
-                if (result.ok) {
-                    modal.remove();
-                    dashboard.loadSchedules();
-                    dashboard.loadStatus();
-                    dashboard.showToast(isEdit ? 'Schedule updated!' : 'Schedule created!', 'success');
+        const saveBtn = modal.querySelector('#saveScheduleBtn');
+        if (saveBtn) {
+            saveBtn.onclick = async () => {
+                const name = modal.querySelector('#scheduleName').value.trim();
+                if (!name) {
+                    alert('Schedule name required');
+                    return;
                 }
-            } catch (error) {
-                this.showAlert('Error: ' + error.message);
-            }
-        };
+
+                const timeValue = modal.querySelector('#scheduleTime').value;
+                const [hour, minute] = timeValue.split(':').map(Number);
+                const days = Array.from(modal.querySelectorAll('#daysCheckboxes input:checked'))
+                    .map(cb => parseInt(cb.value));
+
+                const data = {
+                    name: name,
+                    hour: hour,
+                    minute: minute,
+                    days: days.length ? days : [0, 1, 2, 3, 4, 5],
+                    audio_file: modal.querySelector('#scheduleAudio').value || null,
+                    is_active: modal.querySelector('#scheduleActive').checked
+                };
+
+                if (!isEdit) {
+                    data.profile_id = currentSelectedProfile.id;
+                }
+
+                try {
+                    const result = isEdit ?
+                        await API.schedules.update(schedule.id, data) :
+                        await API.schedules.create(data);
+
+                    if (result.ok) {
+                        modal.remove();
+                        await loadSchedules(currentSelectedProfile.id);
+                        dashboard.showToast(isEdit ? 'Schedule updated!' : 'Schedule created!', 'success');
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            };
+        }
     }
 
-    static createModal(title, bodyHtml) {
+    static createModal(title, bodyHtml, saveButtonId = 'saveBtn') {
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.innerHTML = `
             <div class="modal">
                 <div class="modal-header">
-                    <h3>${title}</h3>
+                    <h3>${this.escapeHtml(title)}</h3>
                     <button class="modal-close">&times;</button>
                 </div>
                 <div class="modal-body">${bodyHtml}</div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary cancel-btn">Cancel</button>
-                    <button class="btn btn-primary" id="saveProfileBtn">Save</button>
+                    <button class="btn btn-primary" id="${saveButtonId}">Save</button>
                 </div>
             </div>
         `;
@@ -262,8 +297,11 @@ class ModalManager {
         document.body.appendChild(modal);
 
         const closeModal = () => modal.remove();
-        modal.querySelector('.modal-close').onclick = closeModal;
-        modal.querySelector('.cancel-btn').onclick = closeModal;
+        const closeBtn = modal.querySelector('.modal-close');
+        const cancelBtn = modal.querySelector('.cancel-btn');
+
+        if (closeBtn) closeBtn.onclick = closeModal;
+        if (cancelBtn) cancelBtn.onclick = closeModal;
 
         return modal;
     }
@@ -274,211 +312,246 @@ class ModalManager {
         div.textContent = text;
         return div.innerHTML;
     }
+}
 
-    static showAlert(message) {
-        alert(message);
+// =========================================================
+// PROFILE FUNCTIONS
+// =========================================================
+
+async function loadProfiles() {
+    try {
+        const result = await API.profiles.getAll();
+        const container = document.getElementById('profilesList');
+
+        if (!container) return;
+
+        if (result.ok && result.data && result.data.length > 0) {
+            container.innerHTML = `
+                <div class="profiles-list">
+                    ${result.data.map(profile => `
+                        <div class="profile-card ${currentSelectedProfile && currentSelectedProfile.id === profile.id ? 'selected' : ''}" 
+                             data-profile-id="${profile.id}"
+                             onclick="selectProfile(${profile.id})">
+                            <div class="profile-card-header">
+                                <div class="profile-color-dot" style="background: ${profile.color}"></div>
+                                <div class="profile-name">${escapeHtml(profile.name)}</div>
+                                <span class="profile-badge ${profile.is_active ? 'active' : 'inactive'}">
+                                    ${profile.is_active ? 'ACTIVE' : 'INACTIVE'}
+                                </span>
+                            </div>
+                            <div class="profile-stats">
+                                📋 ${profile.schedule_count || 0} schedules
+                            </div>
+                            <div class="profile-actions">
+                                ${!profile.is_active ? `
+                                    <button onclick="event.stopPropagation(); activateProfile(${profile.id})" title="Activate">⭐ Activate</button>
+                                ` : ''}
+                                <button onclick="event.stopPropagation(); editProfile(${profile.id})" title="Edit">✏️</button>
+                                <button onclick="event.stopPropagation(); deleteProfile(${profile.id})" title="Delete">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📁</div>
+                    <h4>No Profiles</h4>
+                    <p>Click + New to create a profile</p>
+                </div>
+            `;
+        }
+
+        // Auto-select first profile if none selected
+        if (!currentSelectedProfile && result.data && result.data.length > 0) {
+            await selectProfile(result.data[0].id);
+        }
+
+        // Update header with active profile
+        await updateSystemStatus();
+
+    } catch (error) {
+        console.error('Error loading profiles:', error);
+    }
+}
+
+async function selectProfile(profileId) {
+    try {
+        const result = await API.profiles.getAll();
+        if (result.ok && result.data) {
+            const profile = result.data.find(p => p.id === profileId);
+            if (profile) {
+                currentSelectedProfile = profile;
+                await loadSchedules(profileId);
+                await loadProfiles(); // Refresh to update selection highlight
+
+                // Update panel title and warning
+                const titleEl = document.getElementById('schedulesPanelTitle');
+                const warningEl = document.getElementById('profileStatusWarning');
+
+                if (titleEl) {
+                    titleEl.innerHTML = `📋 SCHEDULES: ${escapeHtml(profile.name)}`;
+                }
+
+                if (warningEl) {
+                    if (profile.is_active) {
+                        warningEl.style.display = 'none';
+                    } else {
+                        warningEl.style.display = 'block';
+                        warningEl.innerHTML = '⚠️ Profile INACTIVE - Schedules will NOT run';
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error selecting profile:', error);
+    }
+}
+
+async function activateProfile(profileId) {
+    if (confirm('Activate this profile? All schedules will be reloaded.')) {
+        try {
+            await API.profiles.activate(profileId);
+            await loadProfiles();
+            if (currentSelectedProfile && currentSelectedProfile.id === profileId) {
+                await selectProfile(profileId);
+            }
+            dashboard.showToast('Profile activated!', 'success');
+        } catch (error) {
+            dashboard.showToast('Error: ' + error.message, 'danger');
+        }
+    }
+}
+
+async function editProfile(profileId) {
+    const result = await API.profiles.getAll();
+    if (result.ok && result.data) {
+        const profile = result.data.find(p => p.id === profileId);
+        if (profile) {
+            ModalManager.showProfileDialog(profile);
+        }
+    }
+}
+
+async function deleteProfile(profileId) {
+    if (confirm('Delete this profile? All schedules in this profile will also be deleted!')) {
+        try {
+            await API.profiles.delete(profileId);
+            if (currentSelectedProfile && currentSelectedProfile.id === profileId) {
+                currentSelectedProfile = null;
+                const schedulesContainer = document.getElementById('schedulesContainer');
+                if (schedulesContainer) {
+                    schedulesContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">📅</div>
+                            <h4>No schedules</h4>
+                            <p>Select a profile or create a new schedule</p>
+                        </div>
+                    `;
+                }
+            }
+            await loadProfiles();
+            dashboard.showToast('Profile deleted!', 'warning');
+        } catch (error) {
+            dashboard.showToast('Error: ' + error.message, 'danger');
+        }
     }
 }
 
 // =========================================================
-// DASHBOARD CLASS
+// SCHEDULE FUNCTIONS
 // =========================================================
 
-class SchoolBellDashboard {
-    constructor() {
-        this.refreshInterval = null;
-        this.dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
-        this.init();
-    }
+async function loadSchedules(profileId) {
+    if (!profileId) return;
 
-    init() {
-        this.loadStatus();
-        this.startAutoRefresh();
-        this.bindEvents();
-        this.updateDateTime();
-        setInterval(() => this.updateDateTime(), 1000);
-    }
+    try {
+        const result = await API.schedules.getAll(profileId);
+        const container = document.getElementById('schedulesContainer');
 
-    bindEvents() {
-        // Navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.switchPage(item.dataset.page);
-            });
-        });
+        if (!container) return;
 
-        // Refresh interval change
-        const intervalInput = document.getElementById('refreshInterval');
-        if (intervalInput) {
-            intervalInput.addEventListener('change', () => this.restartAutoRefresh());
-        }
-    }
-
-    switchPage(page) {
-        this.currentPage = page;
-
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.page === page);
-        });
-
-        document.querySelectorAll('.page').forEach(p => {
-            p.classList.toggle('active', p.id === `${page}Page`);
-        });
-
-        const titles = {
-            dashboard: {
-                title: 'Dashboard',
-                subtitle: 'Overview sistem sekolah'
-            },
-            schedules: {
-                title: 'Jadwal Bel',
-                subtitle: 'Kelola jadwal bel sekolah'
-            },
-            profiles: {
-                title: 'Profiles',
-                subtitle: 'Kelola profile jadwal'
-            },
-            history: {
-                title: 'Riwayat',
-                subtitle: 'Log bel yang telah berbunyi'
-            },
-            settings: {
-                title: 'Settings',
-                subtitle: 'Pengaturan sistem'
-            }
-        };
-
-        const titleInfo = titles[page] || titles.dashboard;
-        document.getElementById('pageTitle').textContent = titleInfo.title;
-        document.getElementById('pageSubtitle').textContent = titleInfo.subtitle;
-
-        this.loadPageData(page);
-    }
-
-    async loadPageData(page) {
-        const loaders = {
-            schedules: () => this.loadSchedules(),
-            profiles: () => this.loadProfiles(),
-            history: () => this.loadHistory()
-        };
-
-        if (loaders[page]) {
-            await loaders[page]();
-        }
-    }
-
-    async loadStatus() {
-        try {
-            const result = await API.system.getStatus();
-            if (result.ok) {
-                this.updateDashboard(result.data);
-                this.updateSystemStatus(result.data.running);
-            }
-        } catch (error) {
-            console.error('Error loading status:', error);
-        }
-    }
-
-    updateDashboard(data) {
-        // Update stats
-        document.getElementById('totalSchedules').textContent = data.active_jobs || 0;
-        document.getElementById('activeSchedules').textContent = data.active_jobs || 0;
-        document.getElementById('activeProfile').textContent = data.active_profile_name || '-';
-
-        // Update next bell
-        if (data.next_bell) {
-            const nextTime = new Date(data.next_bell);
-            const timeStr = nextTime.toLocaleTimeString('id-ID', {
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('nextBellTime').textContent = timeStr;
-            document.getElementById('nextBellLarge').textContent = timeStr;
-            document.getElementById('nextBellName').textContent = data.next_bell_name || 'Bell';
-
-            // Update countdown
-            const now = new Date();
-            const diff = Math.floor((nextTime - now) / 1000);
-            if (diff > 0) {
-                const hours = Math.floor(diff / 3600);
-                const minutes = Math.floor((diff % 3600) / 60);
-                const seconds = diff % 60;
-                let countdownText = '';
-                if (hours > 0) countdownText = `${hours}h ${minutes}m`;
-                else if (minutes > 0) countdownText = `${minutes}m ${seconds}s`;
-                else countdownText = `${seconds}s`;
-                document.getElementById('countdown').textContent = countdownText;
-            } else {
-                document.getElementById('countdown').textContent = 'Now!';
-            }
+        if (result.ok && result.data && result.data.length > 0) {
+            currentSchedules = result.data;
+            renderSchedulesTable(currentSchedules);
         } else {
-            document.getElementById('nextBellTime').textContent = '--:--';
-            document.getElementById('nextBellLarge').textContent = '--:--';
-            document.getElementById('nextBellName').textContent = 'No schedule';
-            document.getElementById('countdown').textContent = '-';
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📅</div>
+                    <h4>No schedules</h4>
+                    <p>Click + Add Schedule to create one</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading schedules:', error);
+        const container = document.getElementById('schedulesContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">⚠️</div>
+                    <h4>Error loading schedules</h4>
+                    <p>Please try again</p>
+                </div>
+            `;
         }
     }
+}
 
-    updateSystemStatus(running) {
-        const statusElement = document.getElementById('systemStatus');
-        const dot = statusElement.querySelector('.status-dot');
-        const text = statusElement.querySelector('.status-text');
+function renderSchedulesTable(schedules) {
+    const container = document.getElementById('schedulesContainer');
+    if (!container) return;
 
-        if (running) {
-            dot.classList.add('running');
-            text.textContent = 'System Running';
-        } else {
-            dot.classList.remove('running');
-            text.textContent = 'System Stopped';
-        }
+    const searchTerm = document.getElementById('scheduleSearch') ? .value.toLowerCase() || '';
+    const statusFilter = document.getElementById('scheduleStatusFilter') ? .value || 'all';
+
+    let filteredSchedules = [...schedules];
+
+    // Apply search filter
+    if (searchTerm) {
+        filteredSchedules = filteredSchedules.filter(s =>
+            s.name.toLowerCase().includes(searchTerm)
+        );
     }
 
-    async loadProfiles() {
-        try {
-            const result = await API.profiles.getAll();
-            const tbody = document.getElementById('profilesBody');
-
-            if (result.ok && result.data?.length) {
-                tbody.innerHTML = result.data.map(profile => `
-                    <tr class="${profile.is_active ? 'active-profile' : ''}">
-                        <td>
-                            <span class="profile-color" style="background: ${profile.color}"></span>
-                            ${this.escapeHtml(profile.name)}
-                            ${profile.is_active ? '<span class="badge badge-success ml-2">ACTIVE</span>' : ''}
-                        </td>
-                        <td>${this.escapeHtml(profile.description || '-')}</td>
-                        <td>${profile.schedule_count || 0}</td>
-                        <td>
-                            <div class="action-buttons">
-                                ${!profile.is_active ? `
-                                    <button class="btn-icon btn-activate" onclick="dashboard.activateProfile(${profile.id})" title="Activate">✅</button>
-                                ` : ''}
-                                <button class="btn-icon btn-edit" onclick="dashboard.editProfile(${profile.id})" title="Edit">✏️</button>
-                                <button class="btn-icon btn-delete" onclick="dashboard.deleteProfile(${profile.id})" title="Delete">🗑️</button>
-                            </div>
-                        </td>
-                    </tr>
-                `).join('');
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No profiles found. Click + New Profile to create one.</td></tr>';
-            }
-        } catch (error) {
-            console.error('Error loading profiles:', error);
-        }
+    // Apply status filter
+    if (statusFilter === 'active') {
+        filteredSchedules = filteredSchedules.filter(s => s.is_active);
+    } else if (statusFilter === 'inactive') {
+        filteredSchedules = filteredSchedules.filter(s => !s.is_active);
     }
 
-    async loadSchedules() {
-        try {
-            const result = await API.schedules.getAll();
-            const tbody = document.getElementById('schedulesBody');
+    if (filteredSchedules.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-icon">🔍</div>
+                <h4>No matching schedules</h4>
+                <p>Try changing your search or filter</p>
+            </div>
+        `;
+        return;
+    }
 
-            if (result.ok && result.data?.length) {
-                tbody.innerHTML = result.data.map(schedule => `
-                    <tr>
-                        <td>${this.escapeHtml(schedule.name)}</td>
+    const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+
+    container.innerHTML = `
+        <table class="schedules-table">
+            <thead>
+                <tr>
+                    <th>Nama</th>
+                    <th>Jam</th>
+                    <th>Hari</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${filteredSchedules.map(schedule => `
+                    <tr class="${!schedule.is_active ? 'inactive-row' : ''}">
+                        <td>${escapeHtml(schedule.name)}</td>
                         <td><strong>${schedule.bell_time}</strong></td>
-                        <td>${this.formatDays(schedule.days_list)}</td>
+                        <td>${formatDays(schedule.days_list, dayNames)}</td>
                         <td>
                             <span class="badge ${schedule.is_active ? 'badge-success' : 'badge-danger'}">
                                 ${schedule.is_active ? 'Active' : 'Inactive'}
@@ -486,168 +559,118 @@ class SchoolBellDashboard {
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-icon btn-toggle" onclick="dashboard.toggleSchedule(${schedule.id}, ${!schedule.is_active})" title="${schedule.is_active ? 'Disable' : 'Enable'}">
+                                <button class="btn-icon" onclick="toggleSchedule(${schedule.id}, ${!schedule.is_active})" title="${schedule.is_active ? 'Disable' : 'Enable'}">
                                     ${schedule.is_active ? '🔘' : '⚪'}
                                 </button>
-                                <button class="btn-icon btn-edit" onclick="dashboard.editSchedule(${schedule.id})" title="Edit">✏️</button>
-                                <button class="btn-icon btn-delete" onclick="dashboard.deleteSchedule(${schedule.id})" title="Delete">🗑️</button>
+                                <button class="btn-icon" onclick="editSchedule(${schedule.id})" title="Edit">✏️</button>
+                                <button class="btn-icon" onclick="deleteSchedule(${schedule.id})" title="Delete">🗑️</button>
                             </div>
                         </td>
                     </tr>
-                `).join('');
-            } else {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No schedules found. Click + Add Schedule to create one.</td></tr>';
-            }
-        } catch (error) {
-            console.error('Error loading schedules:', error);
-        }
-    }
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
 
-    async loadHistory() {
-        try {
-            const result = await API.system.getHistory(50);
-            const tbody = document.getElementById('historyBody');
+function formatDays(daysList, dayNames) {
+    if (!daysList || daysList.length === 0) return 'None';
+    if (daysList.length === 7) return 'Everyday';
+    return daysList.map(d => dayNames[d]).join(', ');
+}
 
-            if (result.ok && result.data?.length) {
-                tbody.innerHTML = result.data.map(history => `
-                    <tr>
-                        <td>${new Date(history.rang_at).toLocaleString('id-ID')}</td>
-                        <td>${this.escapeHtml(history.schedule_name || '-')}</td>
-                        <td>${this.escapeHtml(history.profile_name || '-')}</td>
-                        <td><span class="badge badge-success">${history.status || 'Success'}</span></td>
-                    </tr>
-                `).join('');
-            } else {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No history found</td></tr>';
-            }
-        } catch (error) {
-            console.error('Error loading history:', error);
-        }
-    }
-
-    formatDays(daysList) {
-        if (!daysList?.length) return 'None';
-        if (daysList.length === 7) return 'Everyday';
-        return daysList.map(d => this.dayNames[d]).join(', ');
-    }
-
-    async activateProfile(profileId) {
-        if (confirm('Activate this profile? All schedules will be reloaded.')) {
-            try {
-                await API.profiles.activate(profileId);
-                await this.loadProfiles();
-                await this.loadStatus();
-                this.showToast('Profile activated!', 'success');
-            } catch (error) {
-                this.showToast('Error: ' + error.message, 'danger');
-            }
-        }
-    }
-
-    async editProfile(profileId) {
-        try {
-            const result = await API.profiles.getAll();
-            const profile = result.data?.find(p => p.id === profileId);
-            if (profile) {
-                ModalManager.showProfileDialog(profile);
-            }
-        } catch (error) {
-            this.showToast('Error loading profile: ' + error.message, 'danger');
-        }
-    }
-
-    async deleteProfile(profileId) {
-        if (confirm('Delete this profile? All schedules in this profile will also be deleted!')) {
-            try {
-                await API.profiles.delete(profileId);
-                await this.loadProfiles();
-                await this.loadStatus();
-                this.showToast('Profile deleted!', 'warning');
-            } catch (error) {
-                this.showToast('Error: ' + error.message, 'danger');
-            }
-        }
-    }
-
-    async editSchedule(scheduleId) {
-        try {
-            const result = await API.schedules.getAll();
-            const schedule = result.data?.find(s => s.id === scheduleId);
+async function editSchedule(scheduleId) {
+    try {
+        const result = await API.schedules.getAll(currentSelectedProfile ? .id);
+        if (result.ok && result.data) {
+            const schedule = result.data.find(s => s.id === scheduleId);
             if (schedule) {
                 ModalManager.showScheduleDialog(schedule);
             }
+        }
+    } catch (error) {
+        dashboard.showToast('Error loading schedule: ' + error.message, 'danger');
+    }
+}
+
+async function deleteSchedule(scheduleId) {
+    if (confirm('Delete this schedule?')) {
+        try {
+            await API.schedules.delete(scheduleId);
+            await loadSchedules(currentSelectedProfile ? .id);
+            dashboard.showToast('Schedule deleted!', 'warning');
         } catch (error) {
-            this.showToast('Error loading schedule: ' + error.message, 'danger');
+            dashboard.showToast('Error: ' + error.message, 'danger');
         }
     }
+}
 
-    async deleteSchedule(scheduleId) {
-        if (confirm('Delete this schedule?')) {
-            try {
-                await API.schedules.delete(scheduleId);
-                await this.loadSchedules();
-                await this.loadStatus();
-                this.showToast('Schedule deleted!', 'warning');
-            } catch (error) {
-                this.showToast('Error: ' + error.message, 'danger');
+async function toggleSchedule(scheduleId, newStatus) {
+    try {
+        await API.schedules.toggle(scheduleId);
+        await loadSchedules(currentSelectedProfile ? .id);
+        dashboard.showToast('Schedule ' + (newStatus ? 'enabled' : 'disabled') + '!', 'info');
+    } catch (error) {
+        dashboard.showToast('Error: ' + error.message, 'danger');
+    }
+}
+
+// =========================================================
+// SYSTEM FUNCTIONS
+// =========================================================
+
+async function updateSystemStatus() {
+    try {
+        const result = await API.system.getStatus();
+        if (result.ok) {
+            const statusElement = document.getElementById('systemStatus');
+            if (statusElement) {
+                const dot = statusElement.querySelector('.status-dot');
+                const text = statusElement.querySelector('.status-text');
+
+                if (result.data.running) {
+                    if (dot) dot.classList.add('running');
+                    if (text) text.textContent = 'System Running';
+                } else {
+                    if (dot) dot.classList.remove('running');
+                    if (text) text.textContent = 'System Stopped';
+                }
+            }
+
+            // Update header active profile
+            const profileName = result.data.active_profile_name || 'No Profile';
+            const profileBadge = document.getElementById('profileHeaderBadge');
+            if (profileBadge) {
+                profileBadge.textContent = profileName;
             }
         }
+    } catch (error) {
+        console.error('Error updating system status:', error);
     }
+}
 
-    async toggleSchedule(scheduleId, newStatus) {
-        try {
-            await API.schedules.toggle(scheduleId);
-            await this.loadSchedules();
-            await this.loadStatus();
-            this.showToast(`Schedule ${newStatus ? 'enabled' : 'disabled'}!`, 'info');
-        } catch (error) {
-            this.showToast('Error: ' + error.message, 'danger');
-        }
-    }
+function updateDateTime() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('id-ID');
+    const dateStr = now.toLocaleDateString('id-ID', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
 
-    updateDateTime() {
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString('id-ID');
-        const dateStr = now.toLocaleDateString('id-ID', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
+    const timeEl = document.getElementById('currentTime');
+    const dateEl = document.getElementById('currentDate');
 
-        document.getElementById('currentTime').textContent = timeStr;
-        document.getElementById('currentDate').textContent = dateStr;
-    }
+    if (timeEl) timeEl.textContent = timeStr;
+    if (dateEl) dateEl.textContent = dateStr;
+}
 
-    startAutoRefresh() {
-        const interval = parseInt(document.getElementById('refreshInterval')?.value || 2) * 1000;
-        if (this.refreshInterval) clearInterval(this.refreshInterval);
-        this.refreshInterval = setInterval(() => this.loadStatus(), interval);
-    }
-
-    restartAutoRefresh() {
-        this.startAutoRefresh();
-    }
-
-    showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `toast toast-${type}`;
-        toast.textContent = message;
-        document.body.appendChild(toast);
-
-        setTimeout(() => toast.classList.add('show'), 10);
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // =========================================================
@@ -658,7 +681,8 @@ const systemControl = {
     start: async () => {
         try {
             await API.system.start();
-            dashboard.loadStatus();
+            await updateSystemStatus();
+            dashboard.showToast('System started!', 'success');
         } catch (error) {
             dashboard.showToast('Error starting system: ' + error.message, 'danger');
         }
@@ -667,7 +691,8 @@ const systemControl = {
     stop: async () => {
         try {
             await API.system.stop();
-            dashboard.loadStatus();
+            await updateSystemStatus();
+            dashboard.showToast('System stopped!', 'warning');
         } catch (error) {
             dashboard.showToast('Error stopping system: ' + error.message, 'danger');
         }
@@ -685,13 +710,80 @@ const systemControl = {
     reload: async () => {
         try {
             await API.system.reload();
-            dashboard.loadStatus();
+            await loadSchedules(currentSelectedProfile ? .id);
             dashboard.showToast('System reloaded!', 'success');
         } catch (error) {
             dashboard.showToast('Error reloading system: ' + error.message, 'danger');
         }
     }
 };
+
+// =========================================================
+// DASHBOARD CLASS
+// =========================================================
+
+class SchoolBellDashboard {
+    constructor() {
+        this.refreshInterval = null;
+        this.init();
+    }
+
+    async init() {
+        await loadProfiles();
+        await updateSystemStatus();
+        this.startAutoRefresh();
+        this.bindEvents();
+        this.updateDateTime();
+        setInterval(() => this.updateDateTime(), 1000);
+    }
+
+    bindEvents() {
+        const searchInput = document.getElementById('scheduleSearch');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                if (currentSchedules.length > 0) {
+                    renderSchedulesTable(currentSchedules);
+                }
+            });
+        }
+
+        const statusFilter = document.getElementById('scheduleStatusFilter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', () => {
+                if (currentSchedules.length > 0) {
+                    renderSchedulesTable(currentSchedules);
+                }
+            });
+        }
+    }
+
+    startAutoRefresh() {
+        if (this.refreshInterval) clearInterval(this.refreshInterval);
+        this.refreshInterval = setInterval(() => {
+            if (currentSelectedProfile) {
+                loadSchedules(currentSelectedProfile.id);
+            }
+            updateSystemStatus();
+        }, 5000);
+    }
+
+    updateDateTime() {
+        updateDateTime();
+    }
+
+    showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+}
 
 // =========================================================
 // INITIALIZATION
@@ -701,3 +793,14 @@ let dashboard;
 document.addEventListener('DOMContentLoaded', () => {
     dashboard = new SchoolBellDashboard();
 });
+
+// Make functions globally available
+window.selectProfile = selectProfile;
+window.activateProfile = activateProfile;
+window.editProfile = editProfile;
+window.deleteProfile = deleteProfile;
+window.editSchedule = editSchedule;
+window.deleteSchedule = deleteSchedule;
+window.toggleSchedule = toggleSchedule;
+window.systemControl = systemControl;
+window.ModalManager = ModalManager;

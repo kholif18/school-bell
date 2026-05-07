@@ -50,6 +50,11 @@ class ScheduleDialog(QDialog):
         self._days(layout)
         self._preset(layout)
 
+        self.is_active = QCheckBox("Active")
+        self.is_active.setChecked(True)
+
+        layout.addWidget(self.is_active)
+
         layout.addWidget(QLabel("Audio"))
 
         self.audio = AudioPicker(self.app)
@@ -123,6 +128,8 @@ class ScheduleDialog(QDialog):
         self.time.setTime(QTime(s.bell_time.hour, s.bell_time.minute))
         self._set_days(s.get_days_list())
 
+        self.is_active.setChecked(s.is_active)
+
         if s.audio_file:
             self.audio.set_value(s.audio_file)
 
@@ -138,7 +145,8 @@ class ScheduleDialog(QDialog):
             "hour": t.hour(),
             "minute": t.minute(),
             "days": self._get_days() or self.SCHOOL_DAYS,
-            "audio_file": self.audio.get_value()
+            "audio_file": self.audio.get_value(),
+            "is_active": self.is_active.isChecked()
         }
 
     def _ok(self):

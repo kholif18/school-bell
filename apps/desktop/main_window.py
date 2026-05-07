@@ -343,11 +343,3 @@ class MainWindow(QMainWindow):
 
     def _safe_reload(self, controller):
         QTimer.singleShot(0, controller.load_schedules)
-
-    # =====================================================
-    # CLOSE
-    # =====================================================
-
-    def closeEvent(self, event):
-        event.ignore()
-        self.hide()

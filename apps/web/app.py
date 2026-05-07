@@ -1,7 +1,16 @@
 # apps/web/app.py
 from flask import Flask, jsonify, render_template, request
 import json
+import os
+from werkzeug.utils import secure_filename
 
+# Konfigurasi upload
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "assets", "audio")
+ALLOWED_EXTENSIONS = {'mp3', 'wav', 'ogg', 'm4a'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def create_web_app(core):
     """
@@ -161,7 +170,7 @@ def create_web_app(core):
     def update_profile(profile_id):
         try:
             data = request.get_json()
-            result = core.repo.update_profile(
+            result = core.update_profile(
                 profile_id,
                 name=data.get("name"),
                 description=data.get("description"),
@@ -202,7 +211,7 @@ def create_web_app(core):
             if not profile_exists:
                 return jsonify({"ok": False, "error": "Profile not found"}), 404
             
-            result = core.scheduler.switch_profile(profile_id)
+            result = core.switch_profile(profile_id)
             
             return jsonify({
                 "ok": True,
@@ -256,33 +265,36 @@ def create_web_app(core):
     def create_schedule():
         try:
             data = request.get_json()
+
             profile_id = data.get("profile_id")
-            
             if not profile_id:
                 active_profile = core.get_active_profile()
                 if not active_profile:
                     return jsonify({"ok": False, "error": "No active profile"}), 400
                 profile_id = active_profile.id
-            
+
             from datetime import time
             bell_time = time(
-                data.get("hour", 0),
-                data.get("minute", 0)
+                int(data.get("hour", 0)),
+                int(data.get("minute", 0))
             )
-            
+
+            days_list = data.get("days", [0,1,2,3,4,5])
+
             schedule_id = core.create_schedule(
                 profile_id=profile_id,
                 name=data.get("name"),
                 bell_time=bell_time,
-                days=data.get("days", [0,1,2,3,4,5]),
+                days=days_list,
                 audio_file=data.get("audio_file"),
                 is_active=data.get("is_active", True)
             )
-            
+
             return jsonify({
                 "ok": True,
                 "data": {"id": schedule_id}
             })
+
         except Exception as e:
             return jsonify({
                 "ok": False,
@@ -342,7 +354,7 @@ def create_web_app(core):
                 return jsonify({"ok": False, "error": "Schedule not found"}), 404
             
             new_status = not schedule.is_active
-            result = core.update_schedule(schedule_id, is_active=new_status)
+            core.update_schedule(schedule_id, is_active=new_status)
             
             return jsonify({
                 "ok": True,
@@ -354,6 +366,45 @@ def create_web_app(core):
                 "error": str(e)
             }), 500
 
+    @app.route('/api/schedules/upload-audio', methods=['POST'])
+    def upload_audio():
+        try:
+            if 'audio' not in request.files:
+                return jsonify({"ok": False, "error": "No file provided"}), 400
+            
+            file = request.files['audio']
+            if file.filename == '':
+                return jsonify({"ok": False, "error": "No file selected"}), 400
+            
+            if not allowed_file(file.filename):
+                return jsonify({"ok": False, "error": "File type not allowed"}), 400
+            
+            # Buat folder jika belum ada
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            
+            # Simpan file
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            
+            # Handle duplicate filename
+            counter = 1
+            while os.path.exists(filepath):
+                name, ext = os.path.splitext(filename)
+                filename = f"{name}_{counter}{ext}"
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                counter += 1
+            
+            file.save(filepath)
+            relative_path = os.path.join("assets", "audio", filename)
+            return jsonify({
+                "ok": True,
+                "data": {
+                    "path": relative_path,
+                    "filename": filename
+                }
+            })
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)}), 500
     # =========================================================
     # HISTORY
     # =========================================================
