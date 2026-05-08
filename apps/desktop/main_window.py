@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
 
         self._build_ui()
         self._connect_ui()
-        self.controller.initialize()
+        QTimer.singleShot(0, self.controller.initialize)
 
     # =====================================================
     # UI BUILD
@@ -171,7 +171,7 @@ class MainWindow(QMainWindow):
         self.table.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         
         # Set row height lebih besar
-        self.table.verticalHeader().setDefaultSectionSize(35)
+        self.table.verticalHeader().setDefaultSectionSize(28)
 
         layout.addWidget(self.table)
 
@@ -183,6 +183,7 @@ class MainWindow(QMainWindow):
         self.edit_btn = QPushButton("✏️ Edit")
         self.delete_btn = QPushButton("🗑 Delete")
         self.ring_btn = QPushButton("🔊 Test")
+        self.ring_btn.setEnabled(False)
         self.stop_test_btn = QPushButton("⏹ Stop Bell")
         self.toggle_btn = QPushButton("▶ START SYSTEM")
         self.stop_test_btn.setObjectName("dangerButton")
@@ -297,6 +298,15 @@ class MainWindow(QMainWindow):
         has_selection = len(model.selectedRows()) > 0
         self.ring_btn.setEnabled(has_selection)
         
+    def on_schedules_loaded(self):
+        try:
+            model = self.table.model()
+            if model:
+                self.ring_btn.setEnabled(model.rowCount() > 0)
+            else:
+                self.ring_btn.setEnabled(False)
+        except:
+            self.ring_btn.setEnabled(False)
     # =====================================================
     # SIGNALS
     # =====================================================

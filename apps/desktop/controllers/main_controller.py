@@ -129,6 +129,7 @@ class MainController:
         schedules = self.bridge.get_schedules(self.current_profile_id)
 
         QTimer.singleShot(0, lambda: self._safe_set_model(schedules))
+        QTimer.singleShot(0, self.view.on_schedules_loaded)
 
     def _safe_set_model(self, schedules):
         self._init_table_model(schedules)
