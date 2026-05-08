@@ -59,10 +59,6 @@ class MainWindow(QMainWindow):
 
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
-        paths = get_paths()
-        # style_path = paths.base_dir / "apps/desktop/styles/main_dark.qss"
-        # style_path = paths.base_dir / "apps/desktop/styles/main_light.qss"
-
         saved_theme = self.app.config.get("theme", "dark")
         if not hasattr(self, "_theme_loaded"):
             self.app.theme.apply(saved_theme)
@@ -172,6 +168,16 @@ class MainWindow(QMainWindow):
         
         # Set row height lebih besar
         self.table.verticalHeader().setDefaultSectionSize(28)
+
+        self.table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+
+        self.table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+
+        self.table.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
         layout.addWidget(self.table)
 
@@ -297,6 +303,8 @@ class MainWindow(QMainWindow):
 
         has_selection = len(model.selectedRows()) > 0
         self.ring_btn.setEnabled(has_selection)
+        
+        self.table.viewport().update()
         
     def on_schedules_loaded(self):
         try:

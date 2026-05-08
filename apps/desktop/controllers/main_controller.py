@@ -140,6 +140,8 @@ class MainController:
         from apps.desktop.models.schedule_table_model import ScheduleTableModel
         from PyQt6.QtCore import QSortFilterProxyModel
 
+        self.view.table.clearSelection()
+
         self.view.table_model = ScheduleTableModel(schedules)
         self.view.proxy_model = QSortFilterProxyModel()
         self.view.proxy_model.setSourceModel(self.view.table_model)
@@ -302,8 +304,6 @@ class MainController:
 
     def test_ring(self, schedule_id=None):
         schedule = self.bridge.get_schedule(schedule_id)
-
-        print("DEBUG schedule:", schedule)
 
         if not schedule:
             return
