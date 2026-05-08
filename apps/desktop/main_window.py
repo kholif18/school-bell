@@ -259,14 +259,9 @@ class MainWindow(QMainWindow):
                 QTimer.singleShot(100, bind)
                 return
 
-            try:
-                model.selectionChanged.disconnect()
-            except:
-                pass
-
             model.selectionChanged.connect(self._on_selection_change)
 
-        bind()
+        QTimer.singleShot(200, bind)
             
     # =====================================================
     # HELPER
