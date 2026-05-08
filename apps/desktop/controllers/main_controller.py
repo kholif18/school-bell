@@ -129,6 +129,7 @@ class MainController:
         schedules = self.bridge.get_schedules(self.current_profile_id)
 
         QTimer.singleShot(0, lambda: self._safe_set_model(schedules))
+        QTimer.singleShot(0, self.view.on_schedules_loaded)
 
     def _safe_set_model(self, schedules):
         self._init_table_model(schedules)
@@ -138,6 +139,8 @@ class MainController:
         self.view.table.blockSignals(True)
         from apps.desktop.models.schedule_table_model import ScheduleTableModel
         from PyQt6.QtCore import QSortFilterProxyModel
+
+        self.view.table.clearSelection()
 
         self.view.table_model = ScheduleTableModel(schedules)
         self.view.proxy_model = QSortFilterProxyModel()
@@ -301,8 +304,6 @@ class MainController:
 
     def test_ring(self, schedule_id=None):
         schedule = self.bridge.get_schedule(schedule_id)
-
-        print("DEBUG schedule:", schedule)
 
         if not schedule:
             return
