@@ -23,6 +23,6 @@
   "auto_start": true,
   "autostart": true,
   "tray": false,
-  "manual_bell_audio": "/home/enma/school-bell/assets/audio/Pelajaran ke 13 Dimulai V1 (IND - ENG).mp3",
-  "theme": "dark"
+  "manual_bell_audio": "/home/enma/school-bell/assets/audio/default_bell.wav",
+  "theme": "light"
 }

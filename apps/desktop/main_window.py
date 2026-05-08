@@ -1,3 +1,6 @@
+import socket
+import webbrowser
+
 from PyQt6.QtWidgets import *
 from PyQt6.QtCore import *
 from PyQt6.QtGui import *
@@ -11,6 +14,7 @@ from PyQt6.QtGui import QIcon
 
 from core.styles.loader import load_stylesheet
 from core.paths import get_paths
+from core.version import APP_VERSION
 
 paths = get_paths()
 icon_path = paths.icon_dir / "schoolbell.png"
@@ -47,7 +51,9 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
-        footer = QLabel("SCHOOL BELL AUTOMATION | V1.0 - Ravaa Creative")
+        footer = QLabel(
+            f"SCHOOL BELL AUTOMATION | v{APP_VERSION} - Ravaa Creative"
+        )
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.status_bar.addPermanentWidget(footer, 1)
@@ -119,6 +125,70 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.add_profile_btn)
         layout.addWidget(self.activate_profile_btn)
         layout.addWidget(self.delete_profile_btn)
+
+        # ================= NETWORK INFO =================
+
+        ip = self._get_local_ip()
+
+        self.dashboard_url = f"http://{ip}:5000"
+
+        network_box = QFrame()
+        network_box.setObjectName("networkBox")
+
+        network_layout = QVBoxLayout(network_box)
+        network_layout.setContentsMargins(8, 8, 8, 8)
+        network_layout.setSpacing(6)
+
+        network_title = QLabel("🌐 WEB DASHBOARD")
+        network_title.setObjectName("networkTitle")
+
+        # CLICKABLE LINK
+        self.ip_label = QLabel(
+            f'<a href="{self.dashboard_url}">{self.dashboard_url}</a>'
+        )
+
+        self.ip_label.setObjectName("ipLabel")
+        self.ip_label.setOpenExternalLinks(True)
+        self.ip_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextBrowserInteraction
+        )
+
+        self.ip_label.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        # ================= QR CODE =================
+
+        self.qr_label = QLabel()
+        self.qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        try:
+            import qrcode
+            from io import BytesIO
+
+            qr = qrcode.make(self.dashboard_url)
+
+            buffer = BytesIO()
+            qr.save(buffer, format="PNG")
+
+            pixmap = QPixmap()
+            pixmap.loadFromData(buffer.getvalue())
+
+            self.qr_label.setPixmap(
+                pixmap.scaled(
+                    120,
+                    120,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation
+                )
+            )
+
+        except Exception as e:
+            print("QR Error:", repr(e))
+
+        network_layout.addWidget(network_title)
+        network_layout.addWidget(self.ip_label)
+        network_layout.addWidget(self.qr_label)
+
+        layout.addWidget(network_box)
 
         layout.addStretch()
 
@@ -310,6 +380,30 @@ class MainWindow(QMainWindow):
                 self.ring_btn.setEnabled(False)
         except:
             self.ring_btn.setEnabled(False)
+
+    def _get_local_ip(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return "127.0.0.1"
+        
+    def _get_local_ip(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return "127.0.0.1"
+    
+    def _open_dashboard(self):
+        QDesktopServices.openUrl(QUrl(self.dashboard_url))
+
     # =====================================================
     # SIGNALS
     # =====================================================
