@@ -1,58 +1,91 @@
 # 🔔 School Bell Automation System
 
-Professional automated school bell management software built with Python, PyQt6, Flask Web Dashboard, APScheduler and SQLite.
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows-green)
+![License](https://img.shields.io/badge/license-MIT-orange)
+
+Professional automated school bell management software built with Python, PyQt6, Flask Web Dashboard, APScheduler, and SQLite.
+
+Designed for schools, campuses, and educational institutions to automate bell scheduling and reduce manual operations.
 
 ---
 
-## ✨ Features
+# ✨ Features
 
-- 🔔 Automatic bell ringing based on schedules
-- 📂 Multiple schedule profiles
-- 🌐 Real-time Web Dashboard Control Center
-- 🖥 Desktop GUI Monitor
-- 🎵 Custom audio bell support (MP3/WAV/OGG)
-- 📜 Bell ringing history logs
-- 🔊 Volume control
-- ⚡ Manual ring trigger
-- 🚀 Linux auto-start background service
-- 💾 SQLite lightweight database
+* 🔔 Automatic bell ringing based on schedules
+* 📂 Multiple schedule profiles
+* 🌐 Real-time Web Dashboard Control Center
+* 🖥 Native Desktop GUI Monitor
+* 📱 Mobile web control via local network
+* 🔳 QR Code quick access
+* 🎵 Custom audio bell support (MP3/WAV/OGG)
+* 📜 Bell ringing history logs
+* 🔊 Volume control
+* ⚡ Manual bell trigger
+* 🌗 Dark / Light theme
+* 💾 Database backup & restore
+* 🔄 Built-in update checker
+* 🚀 Linux auto-start service
+* 💻 Windows support
+* 💾 SQLite lightweight database
 
 ---
 
-## 🖼 Interface Preview
+# 🖼 Interface Preview
 
-### Web Dashboard
+## 🌐 Web Dashboard
+
 Modern real-time monitoring dashboard accessible via browser.
 
-### Desktop Monitor
-Native Linux desktop control window built with PyQt6.
+![Web Dashboard](./assets/images/web_ui.png)
 
 ---
 
-## 📦 Technology Stack
+## 🖥 Desktop Monitor Dark Theme
 
-- Python 3.13
-- PyQt6
-- Flask + SocketIO
-- APScheduler
-- SQLAlchemy
-- SQLite
-- Pygame Audio Engine
+Native desktop application built with PyQt6.
+
+![Desktop Monitor](./assets/images/dark-theme.png)
 
 ---
 
-## 🚀 Installation
+## 🖥 Desktop Monitor Light Theme
+
+Another theme.
+
+![Light Theme](./assets/images/light-theme.png)
+
+---
+
+# 📦 Technology Stack
+
+* Python 3.13
+* PyQt6
+* Flask + SocketIO
+* APScheduler
+* SQLAlchemy
+* SQLite
+* Pygame Audio Engine
+* QRCode Generator
+* Local Network Detection
+* Thread-safe Event System
+
+---
+
+# 🚀 Installation
+
+## GNU/Linux
 
 ```bash
-git clone https://github.com/USERNAME/school-bell-automation.git
-cd school-bell-automation
+git clone https://github.com/kholif18/school-bell.git
+cd school-bell
 chmod +x install.sh
-./install.sh
+sudo ./install.sh
 ```
 
 ---
 
-## ▶ Run Application
+# ▶ Run Application
 
 ```bash
 ./start.sh
@@ -64,9 +97,27 @@ Then open browser:
 http://localhost:5000
 ```
 
+Or access from another device in the same network:
+
+```bash
+http://YOUR-IP:5000
+```
+
 ---
 
-## ⚙ Linux Auto Start Service
+# 📱 Mobile Access
+
+The application can be controlled directly from smartphones or tablets connected to the same local network.
+
+Desktop application provides:
+
+* Local IP Address
+* Clickable Dashboard URL
+* QR Code for instant access
+
+---
+
+# ⚙ Linux Auto Start Service
 
 ```bash
 sudo systemctl enable schoolbell
@@ -75,39 +126,63 @@ sudo systemctl start schoolbell
 
 ---
 
-## 📁 Project Structure
+# 💻 Supported Platforms
 
-```bash
-core/        # Scheduler engine, database, audio manager
-desktop/     # Desktop GUI
-web/         # Flask web dashboard
-assets/      # Audio files
-db/          # SQLite database
-logs/        # System logs
+* GNU/Linux ✅
+* Windows ✅
+
+---
+
+# 🔄 Updates
+
+Application updates are distributed through GitHub Releases.
+
+Use:
+
+```text
+Settings → Check Updates
 ```
 
 ---
 
-## 📸 Screenshots
+# 📁 Project Structure
 
-### 🌐 Web Dashboard
-
-![Web Dashboard](./assets/images/web-dashboard.png)
-
----
-
-### 🖥 Desktop Monitor
-
-![Desktop Monitor](./assets/images/desktop-monitor.png)
+```bash
+core/        # Scheduler engine, database, audio manager
+apps/        # Desktop and web applications
+assets/      # Audio, icons, images
+logs/        # Application logs
+db/          # SQLite database
+```
 
 ---
 
-## 📄 License
+# 📸 Screenshots
+
+## 🌐 Web Dashboard
+
+![Web Dashboard](./assets/images/web_ui_.png)
+
+---
+
+## 🖥 Dark Theme
+
+![Dark Theme](./assets/images/dark-theme.png)
+
+---
+
+## 🖥 Light Theme
+
+![Light Theme](./assets/images/light-theme.png)
+
+---
+
+# 📄 License
 
 MIT License
 
 ---
 
-## 👨‍💻 Developer
+# 👨‍💻 Developer
 
-Developed for educational institution automation.
+Developed by Ravaa Creative.

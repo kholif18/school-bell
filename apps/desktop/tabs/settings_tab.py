@@ -8,6 +8,7 @@ from apps.desktop.widgets.audio_picker import AudioPicker
 from core import paths
 from core.paths import get_paths
 from core.version import APP_VERSION
+import webbrowser
 
 class SettingsTab(QWidget):
 
@@ -345,13 +346,6 @@ class SettingsTab(QWidget):
     # =========================
     # CHECK UPDATE
     # =========================
-    def check_update(self):
-        QMessageBox.information(
-            self,
-            "Update",
-            "Belum ada update terbaru"
-        )
-
     def check_update(self):
         try:
             data = self.app.update_service.check_latest()

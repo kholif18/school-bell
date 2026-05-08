@@ -1,27 +1,51 @@
+# =========================
+# ENV
+# =========================
 venv/
-db/
+.env/
+
+# =========================
+# PYTHON CACHE
+# =========================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-db/
-logs/
-
-*.db
-*.db-shm
-*.db-wal
-*.log
-
-.idea/
-.vscode/
-.DS_Store
-config.json
-
-assets/audio/*.mp3
-assets/audio/*.wav
-assets/audio/*.ogg
-
+# =========================
+# BUILD OUTPUT
+# =========================
 dist/
 build/
 *.spec
+
+# =========================
+# DATABASE (LOCAL ONLY)
+# =========================
+db/
+*.db
+*.db-shm
+*.db-wal
+
+# =========================
+# LOGS
+# =========================
+logs/
+*.log
+
+# =========================
+# IDE
+# =========================
+.idea/
+.vscode/
+
+# =========================
+# OS FILES
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# APP CONFIG (LOCAL ONLY)
+# =========================
+config.json
