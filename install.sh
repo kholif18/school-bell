@@ -1,4 +1,3 @@
-# install.sh
 #!/bin/bash
 
 set -e
@@ -10,12 +9,12 @@ DESKTOP_FILE="/usr/share/applications/school-bell.desktop"
 LAUNCHER_LINK="/usr/bin/$BIN_NAME"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_DIR="$SCRIPT_DIR"
 
 echo "🔔 Installing $APP_NAME ..."
 
 # =========================================================
-# CHECK PYTHON
+# CHECK DEPENDENCIES
 # =========================================================
 
 if ! command -v python3 &> /dev/null; then
@@ -28,7 +27,6 @@ if ! command -v pip3 &> /dev/null; then
     exit 1
 fi
 
-
 if ! command -v rsync &> /dev/null; then
     echo "❌ rsync not found"
     exit 1
@@ -40,6 +38,7 @@ if ! python3 -m venv --help > /dev/null 2>&1; then
     echo "sudo apt install python3-venv"
     exit 1
 fi
+
 # =========================================================
 # CREATE APP DIR
 # =========================================================
@@ -54,6 +53,9 @@ sudo mkdir -p "$APP_DIR"
 
 echo "📦 Copying project files..."
 
+echo "SCRIPT_DIR=$SCRIPT_DIR"
+echo "PROJECT_DIR=$PROJECT_DIR"
+
 sudo rsync -a \
     --exclude "__pycache__" \
     --exclude "*.pyc" \
@@ -64,28 +66,48 @@ sudo rsync -a \
     "$PROJECT_DIR"/ "$APP_DIR"/
 
 # =========================================================
+# CREATE VENV
+# =========================================================
+
+echo "🐍 Creating virtual environment..."
+
+if [ ! -d "$APP_DIR/venv" ]; then
+    sudo python3 -m venv "$APP_DIR/venv"
+fi
+
+# =========================================================
+# FIX OWNERSHIP
+# =========================================================
+
+echo "🔐 Setting ownership..."
+
+sudo chown -R $USER:$USER "$APP_DIR"
+
+# =========================================================
 # PERMISSIONS
 # =========================================================
 
 echo "🔐 Setting permissions..."
 
-sudo find "$APP_DIR" -type d -exec chmod 755 {} \;
-sudo find "$APP_DIR" -type f -exec chmod 644 {} \;
+find "$APP_DIR" \
+    -path "$APP_DIR/venv" -prune -o \
+    -type d -exec chmod 755 {} \;
+find "$APP_DIR" \
+    -path "$APP_DIR/venv" -prune -o \
+    -type f -exec chmod 644 {} \;
 
+chmod +x "$APP_DIR/install.sh"
+chmod +x "$APP_DIR/uninstall.sh"
 # =========================================================
-# PYTHON VENV
+# INSTALL DEPENDENCIES
 # =========================================================
-
-echo "🐍 Creating virtual environment..."
-
-sudo python3 -m venv "$APP_DIR/venv"
 
 echo "📥 Installing dependencies..."
 
-sudo "$APP_DIR/venv/bin/pip" install --upgrade pip
+"$APP_DIR/venv/bin/pip" install --upgrade pip
 
 if [ -f "$APP_DIR/requirements.txt" ]; then
-    sudo "$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt"
+    "$APP_DIR/venv/bin/pip" install -r "$APP_DIR/requirements.txt"
 else
     echo "⚠️ requirements.txt not found"
 fi
@@ -96,7 +118,7 @@ fi
 
 echo "🚀 Creating launcher script..."
 
-cat <<EOF | sudo tee "$APP_DIR/run.sh" > /dev/null
+cat <<EOF > "$APP_DIR/run.sh"
 #!/bin/bash
 
 cd "$APP_DIR"
@@ -104,7 +126,7 @@ cd "$APP_DIR"
 exec "$APP_DIR/venv/bin/python" main.py
 EOF
 
-sudo chmod +x "$APP_DIR/run.sh"
+chmod +x "$APP_DIR/run.sh"
 
 # =========================================================
 # GLOBAL COMMAND
@@ -143,25 +165,20 @@ echo "⚡ Creating autostart entry..."
 
 mkdir -p ~/.config/autostart
 
-cat <<EOF > ~/.config/autostart/school-bell.desktop
-[Desktop Entry]
-Version=1.0
-Type=Application
-Name=School Bell Automation
-Comment=Auto start School Bell system
-Exec=$APP_DIR/run.sh
-Terminal=false
-X-GNOME-Autostart-enabled=true
-EOF
+ln -sf "$DESKTOP_FILE" \
+    ~/.config/autostart/school-bell.desktop
 
 # =========================================================
-# POST INSTALL FINAL STEPS
+# POST INSTALL
 # =========================================================
 
 echo "🔄 Updating desktop database..."
+
 sudo update-desktop-database || true
+sudo gtk-update-icon-cache >/dev/null 2>&1 || true
 
 echo "📁 Ensuring audio directory exists..."
+
 mkdir -p "$APP_DIR/assets/audio"
 
 echo ""
@@ -176,8 +193,10 @@ echo ""
 echo ""
 echo "✅ Installation complete!"
 echo ""
+
 echo "Run application:"
 echo "👉 school-bell"
 echo ""
+
 echo "Installed at:"
 echo "👉 $APP_DIR"
