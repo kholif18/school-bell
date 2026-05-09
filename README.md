@@ -160,7 +160,7 @@ db/          # SQLite database
 
 ## 🌐 Web Dashboard
 
-![Web Dashboard](./assets/images/web_ui_.png)
+![Web Dashboard](./assets/images/web_ui.png)
 
 ---
 
