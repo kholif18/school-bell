@@ -47,12 +47,11 @@ class AutoStartService:
 
         desktop_file = autostart_dir / "school-bell.desktop"
 
-        app_path = os.path.abspath(self.entry_file)
-
-        content = f"""[Desktop Entry]
+        content = """[Desktop Entry]
 Type=Application
-Name={self.app_name}
-Exec=python3 {app_path}
+Name=School Bell Automation
+Exec=/opt/school-bell/run.sh
+Terminal=false
 X-GNOME-Autostart-enabled=true
 """
 

@@ -13,6 +13,7 @@ from core.runtime.events import get_event_bus
 from core.runtime.state import get_state_manager
 from core.services.autostart_service import AutoStartService
 from core.theme_manager import ThemeManager
+from core.services.update_service import UpdateService
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ class CoreApp:
         
         self._wire_events()
         self._init_theme()
+        self.update_service = UpdateService()
 
     def _init_theme(self):
         saved = self.config.get("theme", "dark")
