@@ -2,7 +2,7 @@ import requests
 
 class UpdateService:
 
-    API_URL = "https://api.github.com/repos/USERNAME/REPO/releases/latest"
+    API_URL = "https://api.github.com/repos/kholif18/school-bell/releases/latest"
 
     def check_latest(self):
         r = requests.get(self.API_URL, timeout=5)
