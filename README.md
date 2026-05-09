@@ -16,7 +16,6 @@ Designed for schools, campuses, and educational institutions to automate bell sc
 * 📂 Multiple schedule profiles
 * 🌐 Real-time Web Dashboard Control Center
 * 🖥 Native Desktop GUI Monitor
-* 📱 Mobile web control via local network
 * 🔳 QR Code quick access
 * 🎵 Custom audio bell support (MP3/WAV/OGG)
 * 📜 Bell ringing history logs
