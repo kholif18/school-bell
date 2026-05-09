@@ -18,6 +18,8 @@ __pycache__/
 dist/
 build/
 *.spec
+*.AppImage
+*.AppDir
 
 # =========================
 # DATABASE (LOCAL ONLY)
@@ -49,3 +51,7 @@ Thumbs.db
 # APP CONFIG (LOCAL ONLY)
 # =========================
 config.json
+
+SchoolBell.AppDir
+School_Bell-x86_64.AppImage
+appimagetool.AppImage

@@ -1,6 +1,7 @@
 # core/paths.py
 from pathlib import Path
 import sys
+import os
 
 
 class Paths:
@@ -15,12 +16,22 @@ class Paths:
 
     def __init__(self):
         self.BASE_DIR = self._get_base_dir()
+        self.RESOURCE_DIR = self._get_resource_dir()
+
+        # =========================
+        # WRITABLE
+        # =========================
 
         self.DB_DIR = self.BASE_DIR / "db"
         self.LOG_DIR = self.BASE_DIR / "logs"
-        self.ASSETS_DIR = self.BASE_DIR / "assets"
-        self.ICON_DIR = self.ASSETS_DIR / "icon"
         self.CONFIG_FILE = self.BASE_DIR / "config.json"
+
+        # =========================
+        # READONLY RESOURCES
+        # =========================
+
+        self.ASSETS_DIR = self.RESOURCE_DIR / "assets"
+        self.ICON_DIR = self.ASSETS_DIR / "icon"
 
         self.AUDIO_DIR = self.ASSETS_DIR / "audio"
         self.DEFAULT_AUDIO = self.AUDIO_DIR / "default_bell.wav"
@@ -42,15 +53,52 @@ class Paths:
 
     def _get_base_dir(self) -> Path:
         """
-        Support:
-        - normal python run
-        - PyInstaller bundled app
+        Writable app data directory
         """
+
+        # =========================
+        # APPIMAGE / PYINSTALLER
+        # =========================
+
         if getattr(sys, "frozen", False):
-            return Path(sys.executable).parent
+
+            # Linux AppImage
+            if sys.platform.startswith("linux"):
+                return Path.home() / ".local/share/SchoolBell"
+
+            # Windows EXE
+            if sys.platform.startswith("win"):
+                return Path(os.getenv("APPDATA")) / "SchoolBell"
+
+        # =========================
+        # DEVELOPMENT
+        # =========================
 
         return Path(__file__).resolve().parent.parent
 
+    def _get_resource_dir(self) -> Path:
+        """
+        Readonly bundled resources
+        """
+
+        # =========================
+        # PYINSTALLER / APPIMAGE
+        # =========================
+
+        if getattr(sys, "frozen", False):
+
+            # PyInstaller temporary extraction dir
+            if hasattr(sys, "_MEIPASS"):
+                return Path(sys._MEIPASS)
+
+            return Path(sys.executable).parent
+
+        # =========================
+        # DEVELOPMENT
+        # =========================
+
+        return Path(__file__).resolve().parent.parent
+        
     # =========================
     # HELPERS
     # =========================
